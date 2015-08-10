@@ -74,7 +74,9 @@ module DateTime
 		raretime.getutc
 	end
 	
-	def self.dayOfWeek(time)
+	def self.dayOfWeek(time, zone_offset = nil)
+		ztime = time.getutc
+		ztime = adjTime.localtime(zone_offset) unless zone_offset.nil?
 		{
 			0 => :sun,
 			1 => :mon,
@@ -83,11 +85,13 @@ module DateTime
 			4 => :thr,
 			5 => :fri,
 			6 => :sat
-		}[time.getutc.wday]
+		}[ztime.wday]
 	end
 	
-	def self.hourOfDay(time)
-		time.getutc.hour
+	def self.hourOfDay(time, zone_offset = nil)
+		ztime = time.getutc
+		ztime = adjTime.localtime(zone_offset) unless zone_offset.nil?
+		ztime.hour
 	end
 	
 	class TimeCompress
@@ -238,7 +242,7 @@ module DateTime
 				when (7..9) then 7
 				when (10..12) then 10
 			end
-			Time.utic(time.year, month, 1, time.hour, time.min, time.sec)
+			Time.utc(time.year, month, 1, time.hour, time.min, time.sec)
 		end
 	end
 	

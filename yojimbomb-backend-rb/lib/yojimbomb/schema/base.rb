@@ -41,8 +41,8 @@ module Yojimbomb
 		end
 		alias :minor_tags :minorTags
 		
-		def dayOfWeek
-			Yojimbomb::DateTime.dayOfWeek(@occurence)
+		def dayOfWeek(zone = nil)
+			Yojimbomb::DateTime.dayOfWeek(@occurence, zone)
 		end
 		
 	end
