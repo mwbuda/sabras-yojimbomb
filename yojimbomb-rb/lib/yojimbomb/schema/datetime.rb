@@ -27,9 +27,10 @@ module DateTime
 		
 	end
 	
+	
 	#RFC 2822
 	#	day-of-week, DD month-name CCYY hh:mm:ss zone
-	#	note that this is also mostly equivalent to RFC 1123/2616 dates, we only support RFC2822 b/c it is ultimatly 
+	#	note that this is also mostly equivalent to RFC 1123/2616 dates, we only support RFC2822 b/c it is ultimatly ??? 
 	RFC2822_DOW = ['sun','mon','tue','wed', 'thu', 'fri', 'sat', 'sun']
 	RFC2822_MOY = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
 	RFC2822_TZD = [
@@ -69,7 +70,7 @@ module DateTime
 				else Time.parse(raw.strip)
 			end
 
-			else throw InvalidDateTime.new(raw)
+			else raise InvalidDateTime.new(raw)
 		end
 		raretime.getutc
 	end
