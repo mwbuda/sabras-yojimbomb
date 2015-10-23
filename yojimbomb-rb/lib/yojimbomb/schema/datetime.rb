@@ -27,18 +27,19 @@ module DateTime
 		
 	end
 	
+	DaysOfWeek = [:sun, :mon, :tue, :wed, :thr, :fri, :sat].freeze
 	
 	#RFC 2822
 	#	day-of-week, DD month-name CCYY hh:mm:ss zone
 	#	note that this is also mostly equivalent to RFC 1123/2616 dates, we only support RFC2822 b/c it is ultimatly ??? 
-	RFC2822_DOW = ['sun','mon','tue','wed', 'thu', 'fri', 'sat', 'sun']
-	RFC2822_MOY = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"]
+	RFC2822_DOW = ['sun','mon','tue','wed', 'thu', 'fri', 'sat', 'sun'].freeze
+	RFC2822_MOY = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"].freeze
 	RFC2822_TZD = [
 		['UT', 'UTC', 'GMT'],
 		['EST', 'EDT', 'CST', 'CDT', 'MST', 'MDT', 'PST', 'PDT'],
 		('A'..'Z').to_a - ['J'],
 		/(?:[+]|[-])\d{4,4}/
-	].flatten
+	].flatten.freeze
 	RFC822_Pattern = RegExp.new([
 		'^',
 		/(?:#{RFC2822_DOW.join('|')}\s*[,]\s*)?/,
@@ -75,24 +76,49 @@ module DateTime
 		raretime.getutc
 	end
 	
+	def self.numericWeekDay(wd)
+		res = {}
+		i = 0
+		Yojimbomb::DateTime::DaysOfWeek.each do |dow|
+			res[dow] = i
+			i += 1
+		end
+		res[wd]
+	end
+	
 	def self.dayOfWeek(time, zone_offset = nil)
 		ztime = time.getutc
 		ztime = adjTime.localtime(zone_offset) unless zone_offset.nil?
-		{
-			0 => :sun,
-			1 => :mon,
-			2 => :tue,
-			3 => :wed,
-			4 => :thr,
-			5 => :fri,
-			6 => :sat
-		}[ztime.wday]
+		
+		table = {}
+		i = 0
+		Yojimbomb::DateTime::DaysOfWeek.each do |dow|
+			table[i] = dow
+			i += 1
+		end
+		
+		table[ztime.wday]
 	end
 	
-	def self.hourOfDay(time, zone_offset = nil)
+	def self.todValue(hour, minOfHour)
+		hour.to_i + (((minOfHour.to_i * 10)/6).to_f / 100)
+	end
+	
+	def self.timeOfDay(time, zone_offset = nil)
 		ztime = time.getutc
 		ztime = adjTime.localtime(zone_offset) unless zone_offset.nil?
-		ztime.hour
+		Yojimbomb::DateTime.todValue(ztime.hour,ztime.min)
+	end
+	
+	def self.changeToTimeOfDay(time, tod)
+		sod = Yojimbomb::DateTime::StartOfDayCompress.new.compress(time)
+		hours = tod.to_i
+		mins = ((1.0 - tod.to_f) * 100.0).to_i
+		sod + (hours * 60 * 60) + (mins * 60)
+	end
+	
+	def self.daysBetween(ta, tb)
+		#TODO
 	end
 	
 	class TimeCompress
