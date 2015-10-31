@@ -136,6 +136,10 @@ module Yojimbomb
 			@minorTags += xsundry[:minorTags] unless xsundry[:minorTags].nil?
 		end
 	
+		def filter(*metrics)
+			metrics.select {|metric| metric.match(self)}
+		end
+		
 	end
 	
 end
