@@ -40,12 +40,22 @@ module Yojimbomb
 		end
 		alias :primary_tags :primaryTags
 		alias :tags :primaryTags
-		
+		def withPrimaryTags(*tags)
+			@primaryTags += tags
+			@primaryTags.uniq!
+			self
+		end
+		alias :withTags :withPrimaryTags
 		
 		def minorTags
 			@minorTags.dup
 		end
 		alias :minor_tags :minorTags
+		def withMinorTags(*tags)
+			@minorTags += tags
+			@minorTags.uniq!
+			self
+		end
 		
 		def dayOfWeek(zone = nil)
 			Yojimbomb::DateTime.dayOfWeek(@occurence, zone)

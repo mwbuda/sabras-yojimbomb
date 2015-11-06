@@ -41,7 +41,6 @@ module Yojimbomb
 			tod_time = Yojimbomb::DateTime.changeToTimeOfDay(self.start,@todStart)
 			Yojimbomb::DateTime.timeOfDay(tod_time,criteria.zone)
 		end
-		
 		alias :startTimeOfDay :timeOfDay
 				
 		def stopTimeOfDay(zone = nil)
@@ -49,7 +48,7 @@ module Yojimbomb
 			Yojimbomb::DateTime.timeOfDay(tod_time,criteria.zone)
 		end
 		
-		def endDayOfWeek(zone = nil)
+		def stopDayOfWeek(zone = nil)
 			Yojimbomb::DateTime.dayOfWeek(@stop, zone)
 		end
 		
