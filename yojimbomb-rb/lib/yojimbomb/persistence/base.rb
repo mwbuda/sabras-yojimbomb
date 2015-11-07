@@ -14,87 +14,48 @@ module Yojimbomb
 			@logger.nil? ? @nilLogger : @logger
 		end
 		
-		def self.defineEnsureMetricClass(&block)
-			@ensureMetricClass = block
-			self
-		end
-		def self.ensureMetricClassLogic()
-			@ensureMetricClass
-		end
-		def defineEnsureMetricClass(&block)
-			@ensureMetricClass
+		def self.checkConfiguredLogic(*exps, &block)
+			pass = exps.include?( block.arity) unless block.nil?
+			raise :invalidMetricKeeperLogic unless pass
 			self
 		end
 		
-		def self.defineEnsureMetricType(metricClass, &block)
-			@ensureMetricType = {} if @ensureMetricType.nil?
-			@ensureMetricType[metricClass] = block
-			self		
-		end
-		def self.ensureMetricTypeLogic(metricClass)
-			@ensureMetricType = {} if @ensureMetricType.nil?
-			@ensureMetricType[metricClass]
-		end
-		def defineEnsureMetricType(metricClass, &block)
-			@ensureMetricType[metricClass] = block
-			self
-		end
-		
-		def self.defineStore(metricClass, &block)
-			@store = {} if @store.nil?
-			@store[metricClass] = block
-			self
-		end
-		def self.storeLogic(metricClass)
-			@store = {} if @store.nil?
-			@store[metricClass]
-		end
-		def defineStore(metricClass, &block)
-			@store[metricClass] = block
-			self
-		end
-		
-		def self.defineGetMetricTypes(metricClass, &block)
-			@getMetricTypes = {} if @getMetricTypes.nil?
-			@getMetricTypes[metricClass] = block
-			self
-		end
-		def self.getMetricTypesLogic(metricClass)
-			@getMetricTypes[metricClass]
-		end
-		def defineGetMetricTypes(metricClass, &block)
-			@getTypes[metricClass] = block
-			self
-		end
-		
-		def self.defineFind(metricClass, &block)
-			@find = {} if @find.nil?
-			@find[metricClass] = block
-			self
-		end
-		def self.findLogic(metricClass)
-			@find = Hash.new do |h,mclass|
-				Proc.new {|mtype, criteria| criteria.filter(*self.findAll(mtype, metricClass))} 
-			end if @find.nil?
-			@find[metricClass]			
-		end
-		def defineFind(metricClass, &block)
-			@find[metricClass] = block
-			self
-		end
-		
-		def self.defineRemove(metricClass, &block)
-			@remove = {} if @remove.nil?
-			@remove[metricClass] = block
-			self
-		end
-		def self.removeLogic(metricClass)
-			@remove = {} if @remove.nil?
-			@remove[metricClass]
-		end
-		def defineRemove(metricClass, &block)
-			@remove[metricClass] = block
-			self
+		{
+			:ensureMetricClass => [0,1],
+			:ensureMetricType => [1,2],
+			:store => [-2,-3],
+			:getMetricTypes => [0,1],
+			:find => [2,3],
+			:remove => [-2,-3]
+		}.each do |logic, expArity| 
+			class << self
+				define_method("define#{logic.to_s.capitalize}".to_sym) do |metricClass, &block| 
+					self.checkConfiguredLogic(*expArity, &block)
+					field = "@_mklogic_#{logic}".to_sym
+					instance_variable_set(field, {}) if instance_variable_get(field).nil?
+					field[metricClass] = block
+					self
+				end
+				
+				define_method("#{logic}Logic") do |metricClass|
+					field = "@_mklogic_#{logic}".to_sym
+					instance_variable_set(field, {}) if instance_variable_get(field).nil?
+					field[metricClass]
+				end
+			end
+			
+			define_method("define#{logic.to_s.capitalize}".to_sym) do |metricClass, &block|
+				self.checkConfiguredLogic(*expArity, &block)
+				field = "@_mklogic_#{logic}".to_sym
+				instance_variable_get(field)[metricClass] = block
+				self
+			end
+			
+			define_method("hasDefined#{logic.to_s.capitalize}?".to_sym) do |metricClass|
+				field = "@_mklogic_#{logic}".to_sym
+				!instance_variable_get(field)[metricClass].nil?
+			end
+			
 		end
 		
 		def initialze()
@@ -106,21 +67,13 @@ module Yojimbomb
 				h1[mclass] = Hash.new {|h2,mtype| h2[mtype] = false}
 			end
 				
-			@ensureMetricType = {}
-			@store = {}
-			@getTypes = {}
-			@find = {}
-			@remove = {}
-			
-			self.defineEnsureMetricClass(&self.class.ensureMetricClassLogic)
-			
 			[:event, :period].each do |metricClass|
-				self.defineEnsureMetricType(metricClass, &self.class.ensureMetricTypeLogic(metricClass))
-				self.defineStore(metricClass, &self.class.storeLogic(metricClass))
-				self.defineGetTypes(metricClass, &self.class.getTypesLogic(metricClass))
-				self.defineFind(metricClass, &self.class.findLogic(metricClass))
-				self.defineRemove(metricClass, &self.class.removeLogic(metricClass))
-			end
+			[:ensureMetricClass, :ensureMetrictype,:store, :getMetricTypes, :find, :remove].each do |logic|	
+				instance_variable_set("@_mklogic_#{logic}".to_sym, {})
+				myDefineMeth = "define#{logic.to_s.capitalize}".to_sym
+				classLogicMeth = "#{logic}Logic".to_sym
+				send(myDefineMeth, metricClass, &self.class.send(classLogicMeth, metricClass))
+			end end
 		end
 		
 		def ensureMetricClass(metricClass)
@@ -145,7 +98,11 @@ module Yojimbomb
 			
 			ensured = false
 			begin
-				ensured = self.instance_exec(metricType, &@ensureMetricType[metricClass])
+				logic = @ensureMetricType[metricClass]
+				ensured = case logic.arity
+					when 1 then self.instance_exec(metricType, &logic)
+					when 2 then self.instance_exec(metricType, metricClass, &logic)
+				end
 			rescue => e
 				self.logger.error(e.message)
 				self.logger.error("unable to ensure persistence for #{metricType}/#{metricClass}")
@@ -187,9 +144,17 @@ module Yojimbomb
 				groups[mclass][mtype] << metric
 			end
 			
-			groups.each do |mclass,mtypes| mtypes.each do |mtype,metrics|
-				storex = self.instance_exec(mtype, *metrics, &@store[mclass])
-			end end
+			groups.each do |mclass,mtypes| 
+				logic = @store[mclass]
+				mytypes.each do |mtype, typMetrics| begin
+					case logic.arity
+						when -2 then self.instance_exec(mtype, *typMetrics, &logic)
+						when -3 then self.instance_exec(mtype, mclass, *typMetrics, &logic)
+					end
+				rescue => e
+					typMetrics.each {|metric| self.logger.error("unable to store metric(#{mclass}/#{mtype}): #{metric}") }
+				end end
+			end
 
 			self
 		end
@@ -202,7 +167,11 @@ module Yojimbomb
 			end
 			 
 			begin
-				return self.instance_exec(&@getTypes[metricClass])
+				logic = @getTypes[metricClass]
+				return case logic.arity
+					when 0 then self.instance_exec(&logic)
+					when 1 then self.instance_exec(metricClass, &logic) 
+				end
 			rescue => e
 				self.logger.error(e.message)
 				self.logger.error("unable to find metric-types for metric-class=#{mclass}")
@@ -219,7 +188,12 @@ module Yojimbomb
 			end
 			
 			begin
-				prefiltered = self.instance_exec(metricType, criteria, &@find[metricClass])
+				logic = @find[metricClass]
+				prefiltered = case logic.arity
+					when 2 then self.instance_exec(metricType, criteria, &logic)
+					when 3 then self.instance_exec(metricType, metricClass, criteria, &logic)
+				end
+
 				return criteria.nil? ? prefiltered : criteria.filter(prefiltered)
 			rescue => e
 				self.logger.error(e.message)
@@ -243,10 +217,14 @@ module Yojimbomb
 			end
 			
 			begin
-				self.instance_exec(metricType, *metricIds, &@remove[metricClass])
+				logic = @remove[metricClass]
+				case logic.arity
+					when -2 then self.instance_exec(metricType, *metricIds, &logic)
+					when -3 then self.instance_exec(metricType, metricClass, *metricIds, &logic)
+				end
 			rescue => e
 				self.logger.error(e.message)
-				self.logger.error("unable to remove metrics of #{mtype}/#{mclass}")
+				self.logger.error("unable to remove metrics of #{mtype}/#{mclass}: #{metricIds.join(';')}")
 			end
 			
 			self
