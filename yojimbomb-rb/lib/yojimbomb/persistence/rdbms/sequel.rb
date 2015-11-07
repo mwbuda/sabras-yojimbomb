@@ -13,7 +13,6 @@ module RDBMS
 		
 		def initialize(*connect, &cblock)
 			super
-			@tblPrefix = nil
 			@db = Sequel.connect(*connect, &cblock)
 		end
 		
@@ -70,8 +69,7 @@ module RDBMS
 			end
 		end
 		
-		defineEnsureMetricType(:event) do |metricType|
-			mclass = :event
+		defineEnsureMetricType(:event) do |metricType, mclass|
 			meta = tableName('meta', mclass)
 			table  = tableName(mclass,metricType)
 			rmTracker = tableName(mclass,metricType, 'rm')
@@ -95,10 +93,9 @@ module RDBMS
 			self
 		end
 		
-		defineEnsureMetricType(:period) do |metricType|
-			mclass = :period
-			meta = tableName('meta', mclass)
-			table  = tableName(mclass, metricType)
+		defineEnsureMetricType(:period) do |metricType, metricClass|
+			meta = tableName('meta', metricClass)
+			table  = tableName(metricClass, metricType)
 			
 			@db[meta] << {:id => SecureRandom.uuid, :metricType => metricType}
 				
@@ -310,15 +307,10 @@ module RDBMS
 			res
 		end
 		
-		defineFindAll(:period) {|metricType| self.find(metricType, :period, nil)} 
-		defineFind(:period) do |metricType, criteria|
-		
-		end
-		
-		[:event, :period].each do |metricClass| defineRemove(metricClass) do |metricType, *ids|
+		[:event, :period].each do |metricClass| defineRemove(metricClass) do |metricType, mclass, *ids|
 			clearId = SecureRandom.uuid
-			mnTable = tableName(metricClass,metricType)
-			rmTable = tableName(metricClass,metricType,'rm') 
+			mnTable = tableName(mclass,metricType)
+			rmTable = tableName(mclass,metricType,'rm') 
 			
 			rmTrackItems = ids.map do |id|
 				{:id => SecureRandom.uuid, :sid => clearId, :metric => id}
