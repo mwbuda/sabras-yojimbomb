@@ -67,23 +67,8 @@ module Yojimbomb
 			self
 		end
 		
-		def self.defineFindAll(metricClass, &block)
-			@findAll = {} if @findAll.nil?
-			@findAll[metricClass] = block
-			self
-		end
-		def self.findAllLogic(metricClass)
-			@findAll[metricClass]
-		end
-		def defineFindAll(metricClass, &block)
-			@findAll[metricClass] = block
-			self
-		end
-		
 		def self.defineFind(metricClass, &block)
-			@find = Hash.new do |h,mclass|
-				Proc.new {|mtype, criteria| criteria.filter(*self.findAll(mtype, metricClass))} 
-			end if @find.nil?
+			@find = {} if @find.nil?
 			@find[metricClass] = block
 			self
 		end
@@ -124,10 +109,7 @@ module Yojimbomb
 			@ensureMetricType = {}
 			@store = {}
 			@getTypes = {}
-			@findAll = {}
-			@find = Hash.new do |h,mclass|
-				h[mclass] = Proc.new {|mtype,criteria| criteria.filter(*self.findAll(mclass))}
-			end
+			@find = {}
 			@remove = {}
 			
 			self.defineEnsureMetricClass(&self.class.ensureMetricClassLogic)
@@ -136,7 +118,6 @@ module Yojimbomb
 				self.defineEnsureMetricType(metricClass, &self.class.ensureMetricTypeLogic(metricClass))
 				self.defineStore(metricClass, &self.class.storeLogic(metricClass))
 				self.defineGetTypes(metricClass, &self.class.getTypesLogic(metricClass))
-				self.defineFindAll(metricClass, &self.class.findAllLogic(metricClass))
 				self.defineFind(metricClass, &self.class.findLogic(metricClass))
 				self.defineRemove(metricClass, &self.class.removeLogic(metricClass))
 			end
@@ -230,7 +211,7 @@ module Yojimbomb
 			[]
 		end
 		
-		def findAll(metricType, metricClass)
+		def find(metricType, metricClass, criteria = nil)
 			ensured = self.ensureMetricType(metricType, metricClass) 
 			unless ensured
 				self.logger.error("unable to find metrics of #{metricType}/#{metricClass}")
@@ -238,24 +219,8 @@ module Yojimbomb
 			end
 			
 			begin
-				return self.instance_exec(metricType, &@findAll[metricClass])
-			rescue => e
-				self.logger.error(e.message)
-				self.logger.error("unable to find metrics of #{metricType}/#{metricClass}")
-			end
-			
-			[]
-		end
-		
-		def find(metricType, metricClass, criteria)
-			ensured = self.ensureMetricType(metricType, metricClass) 
-			unless ensured
-				self.logger.error("unable to find metrics of #{metricType}/#{metricClass}")
-				return []
-			end
-			
-			begin
-				return self.instance_exec(metricType, criteria, &@find[metricClass])
+				prefiltered = self.instance_exec(metricType, criteria, &@find[metricClass])
+				return criteria.nil? ? prefiltered : criteria.filter(prefiltered)
 			rescue => e
 				self.logger.error(e.message)
 				self.logger.error("unable to find metrics of #{metricType}/#{metricClass}")

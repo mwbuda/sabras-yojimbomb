@@ -239,7 +239,6 @@ module RDBMS
 			
 		end
 		
-		defineFindAll(:event) {|metricType| self.find(metricType, :event, nil)} 
 		defineFind(:event) do |metricType, criteria|
 			table = tableName(:event,metricType)
 			searchId = SecureRandom.uuid
@@ -270,15 +269,10 @@ module RDBMS
 			#populate tags
 			res.each {|metric| populateTags(metric) }
 			
-			#post filter by criteria
-			res = criteria.filter(*res) unless criteria.nil?
-			
 			cleanupFind(metricType, :event, searchId)
-			
 			res
 		end
 		
-		defineFindAll(:period) {|metricType| self.find(metricType, :period, nil)} 
 		defineFind(:period) do |metricType, criteria|
 			table = tableName(:period,metricType)
 			searchId = SecureRandom.uuid
@@ -312,11 +306,7 @@ module RDBMS
 			#populate tags
 			res.each {|metric| populateTags(metric) }
 			
-			#post filter by criteria
-			res = criteria.filter(*res) unless criteria.nil?
-			
 			cleanupFind(metricType, :period, searchId)
-			
 			res
 		end
 		
