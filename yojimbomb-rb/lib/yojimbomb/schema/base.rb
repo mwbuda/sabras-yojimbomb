@@ -109,12 +109,11 @@ module Yojimbomb
 	class Criteria
 		attr_reader :start, :stop
 		attr_reader :todStart, :todStop, :dow, :timezone
-		attr_reader :primaryTags, :minorTags
 		
 		TodDefaultIncrement = 30
 		DefaultSundry = {
 			:todIncrement => 1,
-			:timezone => 0
+			:timezone => nil
 		}
 		
 		def initialize(start,stop, sundry = {})
@@ -140,14 +139,22 @@ module Yojimbomb
 			@timezone = xsundry[:timezone] 
 				
 			@primaryTags = []
-			@primaryTags += xsundry[:primaryTags] unless xsundry[:primaryTags].nil?
+			@primaryTags += xsundry[:primary] unless xsundry[:primary].nil?
 				
 			@minorTags = []
-			@minorTags += xsundry[:minorTags] unless xsundry[:minorTags].nil?
+			@minorTags += xsundry[:minor] unless xsundry[:minor].nil?
 		end
 	
 		def filter(*metrics)
 			metrics.select {|metric| metric.match(self)}
+		end
+		
+		def primaryTags()
+			@primaryTags.dup
+		end
+		
+		def minorTags()
+			@minorTags.dup
 		end
 		
 	end
