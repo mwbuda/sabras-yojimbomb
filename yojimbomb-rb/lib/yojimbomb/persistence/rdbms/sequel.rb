@@ -7,6 +7,13 @@ require 'securerandom'
 module Yojimbomb
 module RDBMS
 	
+	#
+	# Sequel based RDBMS integration
+	# 
+	# Implemenation notes:
+	# 	* uses a dynamic table creation system
+	# 	* per implemenation, minor tags are effectivly indexed
+	#
 	class SequelMetricsKeeper < Yojimbomb::MetricsKeeper
 		
 		attr_accessor :tablePrefix
