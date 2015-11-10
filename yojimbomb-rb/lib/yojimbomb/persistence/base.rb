@@ -1,5 +1,4 @@
 
-require 'yojimbomb/schema/all'
 require 'logger'
 
 module Yojimbomb

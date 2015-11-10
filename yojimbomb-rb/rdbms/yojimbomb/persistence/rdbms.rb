@@ -1,4 +1,5 @@
 
+require 'yojimbomb'
 require 'yojimbomb/persistence/rdbms/sequel'
 
 module Yojimbomb

@@ -1,5 +1,5 @@
 
-require 'yojimbomb/persistence/base'
+require 'yojimbomb'
 
 module Yojimbomb
 	
