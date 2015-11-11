@@ -7,7 +7,7 @@ module Yojimbomb
 		attr_reader :stop, :duration
 		
 		def initialize(type, start, stop, duration, sundry = {})
-			super.initialize(type, :period, start, sundry)
+			super(type, :period, start, sundry)
 			@stop = Yojimbomb::DateTime.parseTime(stop)
 			
 			if (duration == :whole)
@@ -39,13 +39,13 @@ module Yojimbomb
 		
 		def timeOfDay(zone = nil)
 			tod_time = Yojimbomb::DateTime.changeToTimeOfDay(self.start,@todStart)
-			Yojimbomb::DateTime.timeOfDay(tod_time,criteria.zone)
+			Yojimbomb::DateTime.timeOfDay(tod_time,zone)
 		end
 		alias :startTimeOfDay :timeOfDay
 				
 		def stopTimeOfDay(zone = nil)
 			tod_time = Yojimbomb::DateTime.changeToTimeOfDay(self.start,@todStop)
-			Yojimbomb::DateTime.timeOfDay(tod_time,criteria.zone)
+			Yojimbomb::DateTime.timeOfDay(tod_time,zone)
 		end
 		
 		def stopDayOfWeek(zone = nil)

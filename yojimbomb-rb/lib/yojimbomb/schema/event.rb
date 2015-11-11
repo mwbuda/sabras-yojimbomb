@@ -7,7 +7,7 @@ module Yojimbomb
 		attr_reader :quantity
 		
 		def initialize(type, occur, sundry = {})
-			super.initialize(type, :event, occur, sundry)
+			super(type, :event, occur, sundry)
 			@quantity = sundry[:quantity].nil? ? 0 : sundry[:quantity]
 		end
 		
