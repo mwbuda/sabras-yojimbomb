@@ -1,6 +1,6 @@
 
-require 'base'
+require './base'
 require 'yojimbomb/persistence/inmemory'
 
-metricsKeeper = InMemMetricsKeeper.new
+metricsKeeper = Yojimbomb::InMemMetricsKeeper.new
 Yojimbomb::Test.testPersistence(metricsKeeper)

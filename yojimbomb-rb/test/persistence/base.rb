@@ -15,29 +15,30 @@ module Test
 	HourAmt = 60 * 60
 	DayAmt = HourAmt * 24
 
-	def assertTrue(expr)
+	def self.assertTrue(expr)
 		throw :assertFailed unless expr
 	end
 	
-	def assertFalse(expr)
+	def self.assertFalse(expr)
 		throw :assertFailed if expr
 	end
 
-	def isMetricIn?(metric, *metrics) 
+	def self.isMetricIn?(metric, *metrics) 
 		ids = metrics.map {|m| m.id}
 		ids.include?(metric.id)
 	end
 
 	def self.testPersistence(metricsKeeper)
+		puts 'test basic events'
 		self.testBasicEvent(metricsKeeper)
+		puts 'test basic periods'
 		self.testBasicPeriod(metricsKeeper)
 	
+		puts 'test find events'
 		self.testFindEvents(metricsKeeper)
+		puts 'test find periods'
 		self.testFindPeriods(metricsKeeper)
-	
-		self.testReplaceEvent(metricsKeeper)
-		self.testReplacePeriod(metricsKeeper)
-	
+
 	end 
 
 	#save 1 event, retrieve, delete
@@ -52,7 +53,7 @@ module Test
 		
 		metricsKeeper.store(event)
 		
-		findRes = metricsKeepr.find(:test, :event)
+		findRes = metricsKeeper.find(:test, :event)
 		assertTrue( isMetricIn?(event, *findRes) )
 		
 		retEvent = nil
@@ -73,7 +74,7 @@ module Test
 		
 		metricsKeeper.remove(:test, :event, event.id)
 		
-		findRes = findRes = metricsKeepr.find(:test, :event)
+		findRes = findRes = metricsKeeper.find(:test, :event)
 		assertFalse( isMetricIn?(event, *findRes))
 	end
 
@@ -89,16 +90,17 @@ module Test
 		
 		metricsKeeper.store(period)
 		
-		findRes = metricsKeepr.find(:test, :period)
+		findRes = metricsKeeper.find(:test, :period)
 		assertTrue( isMetricIn?(period, *findRes) )
 		
 		retPeriod = nil
 		findRes.each do |metric|
 			next unless metric.id == period.id
-			retEvent = metric
+			retPeriod = metric
 			break
 		end
 		
+		assertFalse(retPeriod.nil?)
 		assertTrue(retPeriod.metricType == :test)
 		assertTrue(retPeriod.count == 5)
 		
@@ -118,7 +120,7 @@ module Test
 		
 		metricsKeeper.remove(:test, :period, period.id)
 		
-		findRes = findRes = metricsKeepr.find(:test, :period)
+		findRes = findRes = metricsKeeper.find(:test, :period)
 		assertFalse( isMetricIn?(period, *findRes) )
 	end
 	
@@ -370,12 +372,5 @@ module Test
 		end end end end
 	end
 	
-	def self.testReplaceEvent(metricsKeeper)
-		#TODO	
-	end
-	
-	def self.testReplacePeriod(metricsKeeper)
-		#TODO
-	end
 end end
 
