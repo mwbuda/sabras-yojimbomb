@@ -27,77 +27,82 @@ module Yojimbomb
 			:find => [2,3],
 			:remove => [-2,-3]
 		}.each do |logic, expArity| 
-			class << self
-				define_method("define#{logic.to_s.capitalize}".to_sym) do |metricClass, &block| 
+			eigenclass = class << self ; self ; end
+			lname = logic.to_s.strip
+			clname = lname[0].upcase + lname[1..-1]
+			
+			eigenclass.instance_eval do 
+				define_method("define#{clname}".to_sym) do |metricClass, &block| 
 					self.checkConfiguredLogic(*expArity, &block)
-					field = "@_mklogic_#{logic}".to_sym
-					instance_variable_set(field, {}) if instance_variable_get(field).nil?
-					field[metricClass] = block
+					@logic = Hash.new {|h,k| h[k] = Hash.new } if @logic.nil?
+					@logic[logic][metricClass] = block
 					self
 				end
 				
-				define_method("#{logic}Logic") do |metricClass|
-					field = "@_mklogic_#{logic}".to_sym
-					instance_variable_set(field, {}) if instance_variable_get(field).nil?
-					field[metricClass]
+				define_method("#{lname}Logic") do |metricClass|
+					@logic = Hash.new {|h,k| h[k] = Hash.new } if @logic.nil?
+					@logic[logic][metricClass]
 				end
+				
 			end
 			
-			define_method("define#{logic.to_s.capitalize}".to_sym) do |metricClass, &block|
-				self.checkConfiguredLogic(*expArity, &block)
-				field = "@_mklogic_#{logic}".to_sym
-				instance_variable_get(field)[metricClass] = block
+			define_method("define#{clname}".to_sym) do |metricClass, &block|
+				self.class.checkConfiguredLogic(*expArity, &block)
+				@logic[logic][metricClass] = block
 				self
 			end
 			
-			define_method("hasDefined#{logic.to_s.capitalize}?".to_sym) do |metricClass|
-				field = "@_mklogic_#{logic}".to_sym
-				!instance_variable_get(field)[metricClass].nil?
+			define_method("hasDefined#{clname}?".to_sym) do |metricClass|
+				!@logic[logic][metricClass].nil?
 			end
 			
 		end
 		
-		def initialze()
+		def initialize()
 			@nilLogger = Logger.new(File::NULL)
 			@logger = Yojimbomb::MetricsKeeper::DefaultLogger
 			
-			@ensuredMetricClasses = Hash.new {|h,mclass| h[mclass] = false}
-			@ensuredMetricTypes = Hash.new do |h1,mclass|
+			@metricClassTrack = Hash.new {|h,mclass| h[mclass] = false}
+			@metricTypeTrack = Hash.new do |h1,mclass|
 				h1[mclass] = Hash.new {|h2,mtype| h2[mtype] = false}
 			end
-				
+			
+			@logic = Hash.new {|h,k| h[k] = Hash.new }
+			
 			[:event, :period].each do |metricClass|
-			[:ensureMetricClass, :ensureMetrictype,:store, :getMetricTypes, :find, :remove].each do |logic|	
-				instance_variable_set("@_mklogic_#{logic}".to_sym, {})
-				myDefineMeth = "define#{logic.to_s.capitalize}".to_sym
+			[:ensureMetricClass, :ensureMetricType,:store, :getMetricTypes, :find, :remove].each do |logic|	
+				clname = logic.to_s[0].capitalize + logic.to_s[1..-1]
+				myDefineMeth = "define#{clname}".to_sym
 				classLogicMeth = "#{logic}Logic".to_sym
 				send(myDefineMeth, metricClass, &self.class.send(classLogicMeth, metricClass))
 			end end
 		end
 		
 		def ensureMetricClass(metricClass)
-			return true if @ensuredMetricClasses[metricClass]
+			return true if @metricClassTrack[metricClass]
 			
 			ensured = false
 			begin
-				ensured = self.instance_exec(metricClass, &@ensureMetricClass)
+				logic = @logic[:ensureMetricClass][metricClass]
+				return false if logic.nil?
+				ensured = self.instance_exec(metricClass, &logic)
 			rescue => e
 				self.logger.error(e.message)
 				self.logger.error("unable to ensure persistence for class=#{metricClass}")
 			end
 			
 			ensured = ensured ? true : false
-			@ensuredMetricClasses[metricClass] = ensured
+			@metricClassTrack[metricClass] = ensured
 		end
 		
 		def ensureMetricType(metricType, metricClass)
 			emc = self.ensureMetricClass(metricClass)
 			return false unless emc
-			return true if @ensuredMetricTypes[metricClass][metricType]
+			return true if @metricTypeTrack[metricClass][metricType]
 			
 			ensured = false
 			begin
-				logic = @ensureMetricType[metricClass]
+				logic = @logic[:ensureMetricType][metricClass]
 				ensured = case logic.arity
 					when 1 then self.instance_exec(metricType, &logic)
 					when 2 then self.instance_exec(metricType, metricClass, &logic)
@@ -108,7 +113,7 @@ module Yojimbomb
 			end
 			
 			ensured = ensured ? true : false
-			@ensuredMetricTypes[metricClass][metricType] = ensured
+			@metricTypeTrack[metricClass][metricType] = ensured
 		end
 		
 		#store given metrics into persistence
@@ -144,8 +149,8 @@ module Yojimbomb
 			end
 			
 			groups.each do |mclass,mtypes| 
-				logic = @store[mclass]
-				mytypes.each do |mtype, typMetrics| begin
+				logic = @logic[:store][mclass]
+				mtypes.each do |mtype, typMetrics| begin
 					case logic.arity
 						when -2 then self.instance_exec(mtype, *typMetrics, &logic)
 						when -3 then self.instance_exec(mtype, mclass, *typMetrics, &logic)
@@ -166,7 +171,7 @@ module Yojimbomb
 			end
 			 
 			begin
-				logic = @getTypes[metricClass]
+				logic = @logic[:getTypes][metricClass]
 				return case logic.arity
 					when 0 then self.instance_exec(&logic)
 					when 1 then self.instance_exec(metricClass, &logic) 
@@ -187,7 +192,7 @@ module Yojimbomb
 			end
 			
 			begin
-				logic = @find[metricClass]
+				logic = @logic[:find][metricClass]
 				prefiltered = case logic.arity
 					when 2 then self.instance_exec(metricType, criteria, &logic)
 					when 3 then self.instance_exec(metricType, metricClass, criteria, &logic)
@@ -216,7 +221,7 @@ module Yojimbomb
 			end
 			
 			begin
-				logic = @remove[metricClass]
+				logic = @logic[:remove][metricClass]
 				case logic.arity
 					when -2 then self.instance_exec(metricType, *metricIds, &logic)
 					when -3 then self.instance_exec(metricType, metricClass, *metricIds, &logic)

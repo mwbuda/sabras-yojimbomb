@@ -2,9 +2,8 @@
 require 'yojimbomb'
 
 module Yojimbomb
-	
 
-	class InMemMetricsKeeper < Yojimbomb::MetricsKeeper
+	class InMemMetricsKeeper < MetricsKeeper
 		
 		module Logic
 			EnsureMetricClass = Proc.new do |metricClass|
@@ -23,7 +22,7 @@ module Yojimbomb
 				store = @content[metricClass][metricType]
 				alreadyHave = store.map {|metric| metric.id}
 				toAdd = metrics.reject {|metric| alreadyHave.include?(metric.id)}
-				store.insert(-1, toAdd)
+				store.insert(-1, *toAdd)
 				self
 			end
 			
@@ -43,6 +42,7 @@ module Yojimbomb
 		end
 		
 		def initialize()
+			super
 			@content = {}
 			@index = {}
 		end
@@ -70,6 +70,6 @@ module Yojimbomb
 		supportMetricClass(:event)
 		supportMetricClass(:period)
 		
-	end	
+	end
 	
 end
