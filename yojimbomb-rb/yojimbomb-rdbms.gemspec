@@ -13,8 +13,8 @@ Gem::Specification.new do |gem|
 	gem.files = Dir[
 		'rdbms/**/*',
 	]
-	add_runtime_dependency 'yojimbomb', '~> 1.0.0'
-	add_runtime_dependency 'sequel', '~> 4.28.0'
+	gem.add_runtime_dependency 'yojimbomb', '~> 1.0'
+	gem.add_runtime_dependency 'sequel', '~> 4.28'
 	
 	gem.license = 'MIT'
 end
