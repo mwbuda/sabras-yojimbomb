@@ -40,7 +40,7 @@ module DateTime
 		('A'..'Z').to_a - ['J'],
 		/(?:[+]|[-])\d{4,4}/
 	].flatten.freeze
-	RFC822_Pattern = RegExp.new([
+	RFC822_Pattern = Regexp.new([
 		'^',
 		/(?:#{RFC2822_DOW.join('|')}\s*[,]\s*)?/,
 		[
@@ -51,7 +51,7 @@ module DateTime
 			/(?:#{RFC2822_TZD.join('|')})/
 		].join('\\s+'),
 		'$'
-	].join(''), RegExp::IGNORECASE)
+	].join(''), Regexp::IGNORECASE)
 
 	#ISO 8601
 	# CCYY-MM-DDThh:mm:ss.sss?TZD
@@ -118,7 +118,9 @@ module DateTime
 	end
 	
 	def self.daysBetween(ta, tb)
-		#TODO
+		diff = (ta - tb).to_i
+		diff *= -1 if diff < 0
+		diff / 60 * 60 * 24
 	end
 	
 	class TimeCompress
@@ -185,7 +187,7 @@ module DateTime
 	# round to the start of min, discarding sec of min
 	class StartOfMinCompress < QuarterMinCompress
 		def onCompress(time)
-			xtime = super.onCompress(time)
+			xtime = super(time)
 			xsecs = xtime.sec
 			ch = (xsecs >= 45) ? 1 : 0
 			xtime + (ch * 60) - xsecs
@@ -195,7 +197,7 @@ module DateTime
 	# round to nearest 15 min increment of hour
 	class QuarterHourCompress < StartOfMinCompress
 		def onCompress(time)
-			xtime = super.onCompress(time)
+			xtime = super(time)
 			sec = rounding(xtime.min,15) * 60
 			time + sec
 		end
@@ -204,7 +206,7 @@ module DateTime
 	#round to nearest half hour
 	class HalfHourCompress < StartOfMinCompress
 		def onCompress(time)
-			xtime = super.onCompress(time)
+			xtime = super(time)
 			sec = rounding(xtime.min,30) * 60
 			time + sec
 		end
@@ -213,7 +215,7 @@ module DateTime
 	# round to start of hour
 	class StartOfHourCompress < QuarterHourCompress
 		def onCompress(time)
-			xtime = super.onCompress(time)
+			xtime = super(time)
 			xmins = xtime.min
 			ch = (xmins >= 45) ? 1 : 0
 			xtime + (ch * 60 * 60) - (xmins * 60)
@@ -227,7 +229,7 @@ module DateTime
 	#	min of hour, sec of min not preserved
 	class HalfDayCompress < StartOfMinCompress
 		def onCompress(time)
-			xtime = super.onCompress(time)
+			xtime = super(time)
 			timeOfDay = (xtime.hour* 100) + xtime.min
 			ch = (timeOfDay >= 2345) ? 1 : 0
 			hour = case xtime.hour
@@ -243,7 +245,7 @@ module DateTime
 	#	does NOT preserve time of day
 	class StartOfDayCompress < StartOfMinCompress
 		def onCompress(time)
-			xtime = super.onCompress(time)
+			xtime = super(time)
 			timeOfDay = (xtime.hour* 100) + xtime.min
 			ch = (timeOfDay >= 2345) ? 1 : 0
 			Time.utc(xtime.year, xtime.month, xtime.day, 0, 0, 0) + (ch * 60 * 60 * 24)
