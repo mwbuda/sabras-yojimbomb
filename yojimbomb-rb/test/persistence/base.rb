@@ -130,10 +130,8 @@ module Test
 		minTime = Time.now
 		maxTime = Time.now + DayAmt
 		times = [
-			minTime,
-			Time.now + (5 * HourAmt),
-			maxTime
-		]
+			minTime, Time.now + (5 * HourAmt), maxTime
+		].map {|time| Yojimbomb::DateTime.parseTime(time)}
 		
 		index = Hash.new {|h,k| h[k] = Array.new}
 		metrics = []
@@ -146,7 +144,9 @@ module Test
 				id = SecureRandom.uuid 
 				index[nil] << id
 				index[time] << id
-				metrics << Yojimbomb::EventMetric.new(:test, time, :id => id, :primary => [p1,p2], :minor => [m1,m2] )
+				metric = Yojimbomb::EventMetric.new(:test, time, :id => id, :primary => [p1,p2], :minor => [m1,m2] )
+				assertTrue(metric.occurence == time)
+				metrics << metric
 			end end end end
 		end
 		
@@ -155,13 +155,14 @@ module Test
 		#just occur	
 		
 		# everything
+		puts "\n\ttest occurence all"
 		critOccAll = Yojimbomb::Criteria.new(minTime - HourAmt/2, maxTime + HourAmt/2)
 		res = metricsKeeper.find(:test, :event, critOccAll).map {|metric| metric.id}
-		assertFalse(res.empty?)
 		index[nil].each {|id| assertTrue(res.include?(id))}
 		
 		#ea. time group
 		times.each do |time|
+			puts "\n\ttest occurence #{time}"
 			critOcc = Yojimbomb::Criteria.new(time - HourAmt/2, time + HourAmt/2)
 			res = metricsKeeper.find(:test, :event, critOcc).map {|metric| metric.id}
 			assertFalse(res.empty?)
@@ -174,11 +175,12 @@ module Test
 		#tod
 		tods = times.map {|time| Yojimbomb::DateTime.timeOfDay(time) }
 		tods.uniq.each do |tod|
+			puts "\n\ttest tod #{tod}"
 			lbound = tod < 1.0  ? 0.0 : tod - 1.0
 			ubound = tod > 22.0 ? 23.0 : tod + 1.0
 			todCrit = critOccMax = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
-				:toStart => lbound, :todStop => ubound
+				:todStart => lbound, :todStop => ubound
 			)
 			res = metricsKeeper.find(:test,:event,todCrit)
 			res.each do |metric|
@@ -191,6 +193,7 @@ module Test
 		#dow
 		dows = times.map {|time| Yojimbomb::DateTime.dayOfWeek(time) } 
 		dows.each do |dow|
+			puts "\n\ttest dow #{dow}"
 			dowCrit = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
 				:dow => dow
@@ -202,6 +205,7 @@ module Test
 		#tags
 		ptags.each do |p1| ptags.each do |p2|
 		mtags.each do |m1| mtags.each do |m2|
+			puts "\n\ttest tags p=#{[p1,p2].join(',')}"
 			ptagCrit = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
 				:primary => [p1,p2].uniq
@@ -212,22 +216,23 @@ module Test
 				assertTrue(metric.primaryTags.include?(p2))
 			end
 			
-			
+			puts "\n\ttest tags m=#{[m1,m2].join(',')}"
 			mtagCrit = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
 				:minor => [m1,m2].uniq
 			)
-			res = metricsKeeper.find(:test,:event, ptagCrit)
+			res = metricsKeeper.find(:test,:event, mtagCrit)
 			res.each do |metric|
 				assertTrue(metric.minorTags.include?(m1))
 				assertTrue(metric.minorTags.include?(m2))
 			end
 			
+			puts "\n\ttest tags p=#{[p1,p2].join(',')} m=#{[m1,m2].join(',')}"
 			pmtagCrit = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
 				:primary => [p1,p2].uniq, :minor => [m1,m2].uniq
 			)
-			res = metricsKeeper.find(:test,:event, ptagCrit)
+			res = metricsKeeper.find(:test,:event, pmtagCrit)
 			res.each do |metric|
 				assertTrue(metric.primaryTags.include?(p1))
 				assertTrue(metric.primaryTags.include?(p2))
