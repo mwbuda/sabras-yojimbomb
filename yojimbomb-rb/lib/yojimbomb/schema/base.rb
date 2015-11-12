@@ -23,8 +23,8 @@ module Yojimbomb
 			xsundry = DefaultSundry
 			xsundry.merge!(sundry) unless sundry.nil?
 			@count = xsundry[:count]
-			@primaryTags = xsundry[:primary]
-			@minorTags = xsundry[:minor]
+			@primaryTags = xsundry[:primary].uniq
+			@minorTags = xsundry[:minor].uniq
 				
 			@id = xsundry[:id].nil? ? SecureRandom.uuid() : xsundry[:id]
 		end
@@ -76,13 +76,13 @@ module Yojimbomb
 		end
 		
 		def matchOccurence(criteria)
-			(@occurence >= criteria.start) and (@occurence <= criteria.stop)
+			(@occurence >= criteria.start) && (@occurence <= criteria.stop)
 		end
 		
 		def matchTimeOfDay(criteria)
 			return true if criteria.todStart.nil?
 			tod = self.timeOfDay(criteria.timezone)
-			(tod >= criteria.todStart) and (tod <= criteria.todStop)
+			(tod >= criteria.todStart) && (tod <= criteria.todStop)
 		end
 		
 		def matchDayOfWeek(criteria)
@@ -94,14 +94,14 @@ module Yojimbomb
 		
 		def matchPrimaryTags(criteria)
 			return true if criteria.primaryTags.empty?
-			criteria.primaryTags.each {|cpt| return false unless @primaryTags.include?(cpt) }
-			true
+			contains = criteria.primaryTags.uniq.map {|cmt| @primaryTags.include?(cmt)}
+			contains.reduce(:&)
 		end
 		
 		def matchMinorTags(criteria)
 			return true if criteria.minorTags.empty?
-			criteria.minorTags.each {|cmt| return false unless @minorTags.include?(cmt) }
-			true
+			contains = criteria.minorTags.uniq.map {|cmt| @minorTags.include?(cmt)}
+			contains.reduce(:&)
 		end
 		
 	end

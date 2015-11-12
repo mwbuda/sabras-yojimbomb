@@ -198,7 +198,7 @@ module Yojimbomb
 					when 3 then self.instance_exec(metricType, metricClass, criteria, &logic)
 				end
 
-				return criteria.nil? ? prefiltered : criteria.filter(prefiltered)
+				return criteria.nil? ? prefiltered : criteria.filter(*prefiltered)
 			rescue => e
 				self.logger.error(e.message)
 				self.logger.error("unable to find metrics of #{metricType}/#{metricClass}")
