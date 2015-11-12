@@ -39,6 +39,7 @@ module Test
 		puts 'test find periods'
 		self.testFindPeriods(metricsKeeper)
 
+		puts "test finished, no problems"
 	end 
 
 	#save 1 event, retrieve, delete
@@ -127,6 +128,7 @@ module Test
 	#save & find events
 	def self.testFindEvents(metricsKeeper)
 		#create test data
+		puts "\n\tcreate test data"
 		minTime = Time.now
 		maxTime = Time.now + DayAmt
 		times = [
@@ -203,41 +205,61 @@ module Test
 		end
 		
 		#tags
+		self.testFindByTags(
+			metricsKeeper, 
+			:test, :event,
+			minTime - HourAmt/2, maxTime + HourAmt/2,
+			ptags, mtags
+		)
+		
+	end
+	
+	def self.testFindByTags(metricsKeeper, mtype, mclass, occStart, occStop, ptags, mtags)
+		skip = []
 		ptags.each do |p1| ptags.each do |p2|
 		mtags.each do |m1| mtags.each do |m2|
-			puts "\n\ttest tags p=#{[p1,p2].join(',')}"
-			ptagCrit = Yojimbomb::Criteria.new(
-				minTime - HourAmt/2, maxTime + HourAmt/2,
-				:primary => [p1,p2].uniq
-			)
-			res = metricsKeeper.find(:test,:event, ptagCrit)
-			res.each do |metric|
-				assertTrue(metric.primaryTags.include?(p1))
-				assertTrue(metric.primaryTags.include?(p2))
+			unless skip.include?("#{p1}#{p2}")
+				puts "\n\ttest tags p=#{[p1,p2].join(',')}"
+				ptagCrit = Yojimbomb::Criteria.new(
+					occStart, occStop,
+					:primary => [p1,p2].uniq
+				)
+				res = metricsKeeper.find(mtype,mclass, ptagCrit)
+				res.each do |metric|
+					assertTrue(metric.primaryTags.include?(p1))
+					assertTrue(metric.primaryTags.include?(p2))
+				end
+				skip << "#{p1}#{p2}"
 			end
 			
-			puts "\n\ttest tags m=#{[m1,m2].join(',')}"
-			mtagCrit = Yojimbomb::Criteria.new(
-				minTime - HourAmt/2, maxTime + HourAmt/2,
-				:minor => [m1,m2].uniq
-			)
-			res = metricsKeeper.find(:test,:event, mtagCrit)
-			res.each do |metric|
-				assertTrue(metric.minorTags.include?(m1))
-				assertTrue(metric.minorTags.include?(m2))
+			unless skip.include?("#{m1}#{m2}")
+				puts "\n\ttest tags m=#{[m1,m2].join(',')}"
+				mtagCrit = Yojimbomb::Criteria.new(
+					occStart, occStop,
+					:minor => [m1,m2].uniq
+				)
+				res = metricsKeeper.find(mtype, mclass, mtagCrit)
+				res.each do |metric|
+					assertTrue(metric.minorTags.include?(m1))
+					assertTrue(metric.minorTags.include?(m2))
+				end
+				skip << "#{m1}#{m2}"
 			end
 			
-			puts "\n\ttest tags p=#{[p1,p2].join(',')} m=#{[m1,m2].join(',')}"
-			pmtagCrit = Yojimbomb::Criteria.new(
-				minTime - HourAmt/2, maxTime + HourAmt/2,
-				:primary => [p1,p2].uniq, :minor => [m1,m2].uniq
-			)
-			res = metricsKeeper.find(:test,:event, pmtagCrit)
-			res.each do |metric|
-				assertTrue(metric.primaryTags.include?(p1))
-				assertTrue(metric.primaryTags.include?(p2))
-				assertTrue(metric.minorTags.include?(m1))
-				assertTrue(metric.minorTags.include?(m2))
+			unless skip.include?("#{p1}#{p2}#{m1}#{m2}")
+				puts "\n\ttest tags p=#{[p1,p2].join(',')} m=#{[m1,m2].join(',')}"
+				pmtagCrit = Yojimbomb::Criteria.new(
+					occStart, occStop,
+					:primary => [p1,p2].uniq, :minor => [m1,m2].uniq
+				)
+				res = metricsKeeper.find(mtype,mclass, pmtagCrit)
+				res.each do |metric|
+					assertTrue(metric.primaryTags.include?(p1))
+					assertTrue(metric.primaryTags.include?(p2))
+					assertTrue(metric.minorTags.include?(m1))
+					assertTrue(metric.minorTags.include?(m2))
+				end
+				skip << "#{p1}#{p2}#{m1}#{m2}"
 			end
 			
 		end end end end
@@ -247,13 +269,14 @@ module Test
 	#save & find periods
 	def self.testFindPeriods(metricsKeeper)
 		#create test data
+		puts "\n\tcreate test data"
 		minTime = Time.now
 		maxTime = Time.now + DayAmt
 		times = [
 			[minTime, minTime + (5 * HourAmt)],
 			[Time.now + (10 * HourAmt), Time.now + (15 * HourAmt)],
-			[maxTime, maxTime + (5 * HourAmt)]
-		]
+			[maxTime - (5 * HourAmt), maxTime]
+		].map {|start,stop| [Yojimbomb::DateTime.parseTime(start), Yojimbomb::DateTime.parseTime(stop)] }
 		
 		index = Hash.new {|h,k| h[k] = Array.new}
 		metrics = []
@@ -265,7 +288,7 @@ module Test
 			ptags.each do |p1| ptags.each do |p2| mtags.each do |m1| mtags.each do |m2| 
 				id = SecureRandom.uuid 
 				index[nil] << id
-				index[time] << id
+				index[start] << id
 				metrics << Yojimbomb::PeriodMetric.new(
 					:test, start, stop, 30, 
 					:id => id, :primary => [p1,p2], :minor => [m1,m2] 
@@ -278,30 +301,33 @@ module Test
 		#just occur	
 		
 		# everything
+		puts "\n\ttest occurence all"
 		critOccAll = Yojimbomb::Criteria.new(minTime - HourAmt/2, maxTime + HourAmt/2)
 		res = metricsKeeper.find(:test, :period, critOccAll).map {|metric| metric.id}
 		assertFalse(res.empty?)
 		index[nil].each {|id| assertTrue(res.include?(id))}
 		
 		#ea. time group
-		times.each do |time|
-			critOcc = Yojimbomb::Criteria.new(time - HourAmt/2, time + HourAmt/2)
+		times.each do |start,stop|
+			puts "\n\ttest occurence #{start}..#{stop}"
+			critOcc = Yojimbomb::Criteria.new(start - HourAmt/2, stop + HourAmt/2)
 			res = metricsKeeper.find(:test, :period, critOcc).map {|metric| metric.id}
 			assertFalse(res.empty?)
-			times.each do |tx| index[tx].each do |id| case tx
-				when time then assertTrue(res.include?(id))
+			times.each do |tx,txx| index[tx].each do |id| case tx
+				when start then assertTrue(res.include?(id))
 				else assertFalse(res.include?(id))
 			end end end
 		end
 		
 		#tod
-		tods = times.map {|time| Yojimbomb::DateTime.timeOfDay(time) }
-		tods.uniq.each do |tod|
-			lbound = tod < 1.0  ? 0.0 : tod - 1.0
-			ubound = tod > 22.0 ? 23.0 : tod + 1.0
+		tods = times.map {|start,stop| [Yojimbomb::DateTime.timeOfDay(start), Yojimbomb::DateTime.timeOfDay(stop)] }
+		tods.uniq.each do |stod, etod|
+			puts "\n\ttest tod #{stod}..#{etod}"
+			lbound = stod < 1.0  ? 0.0 : stod - 1.0
+			ubound = etod > 22.0 ? 23.0 : etod + 1.0
 			todCrit = critOccMax = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
-				:toStart => lbound, :todStop => ubound
+				:todStart => lbound, :todStop => ubound
 			)
 			res = metricsKeeper.find(:test,:period,todCrit)
 			res.each do |metric|
@@ -314,10 +340,13 @@ module Test
 		end
 		
 		#dow
-		dows = times.map {|time| Yojimbomb::DateTime.dayOfWeek(time) } 
+		dows = times.map {|start,stop| Yojimbomb::DateTime.dayOfWeek(start) } 
+		dows += times.map {|start,stop| Yojimbomb::DateTime.dayOfWeek(stop) }
+		dows.uniq! 
 		startNumDow = Yojimbomb::DateTime.numericWeekDay(Yojimbomb::DateTime::DaysOfWeek[0])
 		endNumDow = Yojimbomb::DateTime.numericWeekDay(Yojimbomb::DateTime::DaysOfWeek[-1])
 		dows.each do |dow|
+			puts "\n\ttest dow #{dow}"
 			numDow = Yojimbomb::DateTime.numericWeekDay(dow)
 			dowCrit = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
@@ -339,42 +368,12 @@ module Test
 		end
 		
 		#tags
-		ptags.each do |p1| ptags.each do |p2|
-		mtags.each do |m1| mtags.each do |m2|
-			ptagCrit = Yojimbomb::Criteria.new(
-				minTime - HourAmt/2, maxTime + HourAmt/2,
-				:primary => [p1,p2].uniq
-			)
-			res = metricsKeeper.find(:test,:event, ptagCrit)
-			res.each do |metric|
-				assertTrue(metric.primaryTags.include?(p1))
-				assertTrue(metric.primaryTags.include?(p2))
-			end
-			
-			
-			mtagCrit = Yojimbomb::Criteria.new(
-				minTime - HourAmt/2, maxTime + HourAmt/2,
-				:minor => [m1,m2].uniq
-			)
-			res = metricsKeeper.find(:test,:event, ptagCrit)
-			res.each do |metric|
-				assertTrue(metric.minorTags.include?(m1))
-				assertTrue(metric.minorTags.include?(m2))
-			end
-			
-			pmtagCrit = Yojimbomb::Criteria.new(
-				minTime - HourAmt/2, maxTime + HourAmt/2,
-				:primary => [p1,p2].uniq, :minor => [m1,m2].uniq
-			)
-			res = metricsKeeper.find(:test,:event, ptagCrit)
-			res.each do |metric|
-				assertTrue(metric.primaryTags.include?(p1))
-				assertTrue(metric.primaryTags.include?(p2))
-				assertTrue(metric.minorTags.include?(m1))
-				assertTrue(metric.minorTags.include?(m2))
-			end
-			
-		end end end end
+		self.testFindByTags(
+			metricsKeeper, 
+			:test, :period,
+			minTime - HourAmt/2, maxTime + HourAmt/2,
+			ptags, mtags
+		)
 	end
 	
 end end
