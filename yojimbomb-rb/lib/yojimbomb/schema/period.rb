@@ -53,18 +53,18 @@ module Yojimbomb
 		end
 		
 		def matchOccurence(criteria)
-			super(criteria) and (self.stop <= criteria.stop)
+			super(criteria) && (self.stop <= criteria.stop)
 		end
 		
 		def matchTimeOfDay(criteria) 
-			return true if critera.todStart.nil?
+			return true if criteria.todStart.nil?
 			
-			stod = self.startTimeOfDay(criteria.zone)
-			etod = self.stopTimeOfDay(critera.zone)
-			
-			if (stod >= criteria.todStart) and (stod <= criteria.todStop)
+			stod = self.startTimeOfDay(criteria.timezone)
+			etod = self.stopTimeOfDay(criteria.timezone)
+
+			if (stod >= criteria.todStart) && (stod <= criteria.todStop)
 				true
-			elsif (etod >= criteria.todStart) and (etod <= criteria.todStop)
+			elsif (etod >= criteria.todStart) && (etod <= criteria.todStop)
 				true
 			else
 				false
@@ -74,8 +74,8 @@ module Yojimbomb
 		def matchDayOfWeek(criteria)
 			return true if criteria.dow.nil?
 			
-			my_swd = Yojimbomb::DateTime.numericWeekDay( self.startDayOfWeek(criteria.zone) )
-			my_ewd = Yojimbomb::DateTime.numericWeekDay( self.endDayOfWeek(criteria.zone) )
+			my_swd = Yojimbomb::DateTime.numericWeekDay( self.startDayOfWeek(criteria.timezone) )
+			my_ewd = Yojimbomb::DateTime.numericWeekDay( self.endDayOfWeek(criteria.timezone) )
 			
 			range = if my_swd < my_ewd
 				(my_swd..my_ewd).to_a
