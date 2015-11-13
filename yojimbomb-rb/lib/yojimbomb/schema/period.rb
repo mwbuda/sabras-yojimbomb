@@ -18,9 +18,17 @@ module Yojimbomb
 				@duration = duration
 			
 				if sundry.keys.include?(:tod) or sundry.keys.include?(:todStart)
-					@todStart = sundry[:todStart]
-					@todStart = sundry[:tod] if @todStart.nil?
-					@todStop = sundry[:todStop]	
+					rawTodStart = sundry[:todStart]
+					rawTodStart = sundry[:tod] if rawTodStart.nil?
+					
+					todStartTime = Yojimbomb.changeToTimeOfDay(start, rawTodStart)
+					@todStart = Yojimbomb.timeOfDay(todStartTime)
+					
+					rawTodStop = sundry[:todStop]
+					unless rawTodStop.nil?
+						todStopTime = Yojimbomb.changeToTimeOfDay(start, rawTodStop)
+						@todStop = Yojimbomb.timeOfDay(todStopTime)
+					end	
 				else
 					@todStart = Yojimbomb::DateTime.timeOfDay(self.start)
 				end
@@ -75,7 +83,7 @@ module Yojimbomb
 			return true if criteria.dow.nil?
 			
 			my_swd = Yojimbomb::DateTime.numericWeekDay( self.startDayOfWeek(criteria.timezone) )
-			my_ewd = Yojimbomb::DateTime.numericWeekDay( self.endDayOfWeek(criteria.timezone) )
+			my_ewd = Yojimbomb::DateTime.numericWeekDay( self.stopDayOfWeek(criteria.timezone) )
 			
 			range = if my_swd < my_ewd
 				(my_swd..my_ewd).to_a

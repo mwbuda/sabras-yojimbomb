@@ -73,6 +73,9 @@ module DateTime
 
 			else raise InvalidDateTime.new(raw)
 		end
+		
+		raretime = Time.at(raretime.to_i) if (raretime.to_f % 1) > 0
+		
 		raretime.getutc
 	end
 	
@@ -101,26 +104,36 @@ module DateTime
 	end
 	
 	def self.todValue(hour, minOfHour)
-		hour.to_i + (((minOfHour.to_i * 10)/6).to_f / 100)
+		minExcess = (minOfHour / 60).to_i
+		minRem = (minOfHour - (minExcess * 60)).to_i
+		minFloat = (100 * minRem / 60).to_f / 100.0
+		minFloat -= minFloat % 0.01
+		(hour.to_i + minExcess).to_f + minFloat
 	end
 	
 	def self.timeOfDay(time, zone_offset = nil)
 		ztime = time.getutc
-		ztime = adjTime.localtime(zone_offset) unless zone_offset.nil?
-		Yojimbomb::DateTime.todValue(ztime.hour,ztime.min)
+		ztime = ztime.localtime(zone_offset) unless zone_offset.nil?
+		Yojimbomb::DateTime.todValue(ztime.hour, ztime.min)
 	end
 	
 	def self.changeToTimeOfDay(time, tod)
-		sod = Yojimbomb::DateTime::StartOfDayCompress.new.compress(time)
+		adjTime = time
+		adjTime = Time.at(time.to_i).localtime(time.utc_offset) if (time.to_f % 1) > 0
+
+		minAmt = 60
+		hourAmt = 60 * minAmt
+		sodDiff = (adjTime.hour * hourAmt) + (adjTime.min * minAmt) + adjTime.sec
+		sod = adjTime - sodDiff
+		
 		hours = tod.to_i
-		mins = ((1.0 - tod.to_f) * 100.0).to_i
-		sod + (hours * 60 * 60) + (mins * 60)
+		minPercent = ((tod.to_f % 1.0) * 100.0).to_i.abs
+		mins = (60 * minPercent).to_i / 100
+		sod + (hours * hourAmt) + (mins * minAmt)
 	end
 	
 	def self.daysBetween(ta, tb)
-		diff = (ta - tb).to_i
-		diff *= -1 if diff < 0
-		diff / 60 * 60 * 24
+		(ta - tb).to_i.abs / (60 * 60 * 24)
 	end
 	
 	class TimeCompress

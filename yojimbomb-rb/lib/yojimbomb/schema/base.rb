@@ -132,6 +132,8 @@ module Yojimbomb
 			unless todStart.nil?
 				@todStop = xsundry[:todStop]
 				@todStop = todStart + xsundry[:todIncrement] if @todStop.nil?
+				@todStart -= @todStart % 0.01
+				@todStop  -= @todStop  % 0.01
 			end
 				
 			@dow = xsundry[:dow]
