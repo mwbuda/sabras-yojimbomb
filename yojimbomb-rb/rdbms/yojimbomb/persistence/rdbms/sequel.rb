@@ -32,19 +32,19 @@ module RDBMS
 		end
 		
 		def cleanDbId(id) 
-			id.to_s.downcase.strip[0..10]
+			id.to_s.downcase.strip[0..9]
 		end
 		
 		def tableName(*nameParts)
 			prefix = self.cleanDbId( @tablePrefix.nil? ? '' : "#{@tablePrefix}_")
-			cnparts = nameParts.map {|p| p.to_s.downcase.strip[0..10] }
+			cnparts = nameParts.map {|p| cleanDbId(p) }
 			"#{prefix}#{cnparts.join('_')}".to_sym
 		end
 		
 		[:period,:event].each do |mc| defineEnsureMetricClass(mc) do |metricClass|
 			@db.create_table? tableName('meta', metricClass) do
-				primary_key(:id,'binary(16)')
-				column(:metricType, :string, :unique => true)
+				column(:id,'binary(16)', :primary_key => true)
+				column(:metricType, 'varchar(10)', :unique => true)
 			end
 			self
 		end end
@@ -63,9 +63,12 @@ module RDBMS
 			ptagss = tableName(mclass,mtype,'pts')
 			
 			[ [ptags,ptagsx,ptagss], [mtags,mtagsx,mtagss] ].each do |tags,tagx, tagss|
-				@db.create_table? tags { primary_key(:id, 'binary(16)') ; column(:tagv, :string, :unique => true) }
+				@db.create_table? tags do 
+					column(:id, 'binary(16)', :primary_key => true)
+					column(:tagv, 'varchar(10)', :unique => true)
+				end
 				@db.create_table? tagx do
-					primary_key(:id, 'binary(16)')
+					column(:id, 'binary(16)', :primary_key=>true)
 					{:tag => tags, :metric => table}.each do |col,xtab|
 						column(col,'binary(16)')
 						foreign_key(col, xtab, :null => false)
@@ -73,9 +76,9 @@ module RDBMS
 					index([:metric, :tag])
 				end
 				@db.create_table? tagss do
-					primary_key(:id, 'binary(16)')
+					column(:id, 'binary(16)', :primary_key => true)
 					column(:sid, 'binary(16)', :null => false)
-					column(:tagv, :string, :null => false)
+					column(:tagv, 'varchar(10)', :null => false)
 				end
 			end
 		end
@@ -88,14 +91,14 @@ module RDBMS
 			@db[meta] << {:id => SecureRandom.uuid, :metricType => metricType}
 				
 			@db.create_table?(table) do
-				primary_key(:id, 'binary(16)')
+				column(:id, 'binary(16)', :primary_key => true)
 				column(:count,:integer)
 				column(:occur,:timestamp)
 				column(:qty,:integer)
 			end
 			
 			@db.create_table?(rmTracker) do
-				primary_key(:id, 'binary(16)')
+				column(:id, 'binary(16)', :primary_key => true)
 				column(:sid, 'binary(16)')
 				column(:metric, 'binary(16)')
 			end
@@ -108,10 +111,10 @@ module RDBMS
 			meta = tableName('meta', metricClass)
 			table  = tableName(metricClass, metricType)
 			
-			@db[meta] << {:id => SecureRandom.uuid, :metricType => metricType}
+			@db[meta] << {:id => SecureRandom.uuid, :metricType => cleanDbId(metricType)}
 				
 			@db.create_table?(table) do
-				primary_key(:id, 'binary(16)')
+				column(:id, 'binary(16)', :primary_key => true)
 				column(:count,:integer)
 				[:pstart,:pstop].each {|col| column(col,:timestamp)}
 				[:todstart,:todstop].each {|col| column(col,'numeric(4,2)')}
@@ -170,7 +173,7 @@ module RDBMS
 				tagid = @db[tb][:tagv => tag].get(:id)
 				if tagid.nil?
 					tagid = SecureRandom.uuid
-					@db[tb] << {:id => tagid, :tagv => tag}
+					@db[tb] << {:id => tagid, :tagv => cleanDbId(tag)}
 				end
 				
 				noLink = @db[xtb][:tag => tagid, :metric => metric.id].empty?
@@ -197,7 +200,7 @@ module RDBMS
 				tagTsTb = tableName(metricClass, metricType, "#{tx}ts")
 				
 				temps = tags.map do |tag|
-					{:id => SecureRandom.uuid, :sid => searchId, :tagv => tag}
+					{:id => SecureRandom.uuid, :sid => searchId, :tagv => cleanDbId(tag)}
 				end
 				@db[tagTsTb].multi_insert(temps)
 				
