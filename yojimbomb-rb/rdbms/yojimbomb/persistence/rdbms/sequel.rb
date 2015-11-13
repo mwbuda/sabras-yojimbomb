@@ -18,9 +18,13 @@ module RDBMS
 		
 		attr_accessor :tablePrefix
 		
-		def initialize(*connect, &cblock)
-			super
-			@db = Sequel.connect(*connect, &cblock)
+		def self.connect(*connect, &cblock)
+			self.new( Sequel.connect(*connect, &cblock) )
+		end
+		
+		def initialize(db)
+			super()
+			@db = db
 		end
 		
 		def timeDbStr(ts)
@@ -37,13 +41,13 @@ module RDBMS
 			"#{prefix}#{cnparts.join('_')}".to_sym
 		end
 		
-		defineEnsureMetricClass do |metricClass|
+		[:period,:event].each do |mc| defineEnsureMetricClass(mc) do |metricClass|
 			@db.create_table? tableName('meta', metricClass) do
 				primary_key(:id,'binary(16)')
 				column(:metricType, :string, :unique => true)
 			end
 			self
-		end
+		end end
 		
 		def createTagTables(mtype, mclass)
 			table  = tableName(mclass,mtype)

@@ -13,6 +13,7 @@ Gem::Specification.new do |gem|
 	gem.files = Dir[
 		'rdbms/**/*',
 	]
+	gem.require_paths = ['rdbms']
 	gem.add_runtime_dependency 'yojimbomb', '~> 1.0'
 	gem.add_runtime_dependency 'sequel', '~> 4.28'
 	
