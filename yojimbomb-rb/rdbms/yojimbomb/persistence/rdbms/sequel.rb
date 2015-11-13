@@ -126,25 +126,23 @@ module RDBMS
 			mclass = :event
 			table = tableName(mclass, mtype)
 			events.each do |event|
-			begin
+			self.tryBlock("unable to store metric(#{mtype}/#{mclass}) #{event}") do
 				@db[table] << {
 					:id => event.id, :count => event.count, :occur => event.occurence,
 					:qty => event.quantity
 				}
 				self.persistTags(event)
-			rescue => e
-				self.logger.error(e.message)
-				self.logger.error("unable to store metric(#{mtype}/#{mclass}) #{event}")
-				next
 			end end
+			
 			self
 		end
 		
 		defineStore(:period) do |mtype, *periods|
 			mclass = :period
 			table = tableName(mclass, mtype)
+			
 			periods.each do |period|
-			begin
+			self.tryBlock("unable to store metric(#{mtype}/#{mclass}) #{period}") do
 				@db[table] << {
 					:id => event.id, :count => event.count, 
 					:pstart => period.start, :pstop => period.stop,
@@ -152,11 +150,8 @@ module RDBMS
 					:dur => period.duration,
 				}
 				self.persistTags(period)
-			rescue => e
-				self.logger.error(e.message)
-				self.logger.error("unable to store metric(#{mtype}/#{mclass}) #{period}")
-				next
 			end end
+			
 			self
 		end
 		
