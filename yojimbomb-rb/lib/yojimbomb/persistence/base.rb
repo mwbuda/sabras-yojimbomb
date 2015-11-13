@@ -78,17 +78,30 @@ module Yojimbomb
 			end end
 		end
 		
+		def tryBlock(*failMessages, &block)
+			begin
+				block.call()
+			rescue => e
+				emssg = "#{e.message}\n\t#{e.backtrace.join("\n\t")}"
+				self.logger.error(emssg)
+				failMessages.each {|failMessage| self.logger.error(failMessage)} 
+			end
+		end	
+		
+		def handleError(e, message = nil)
+			emssg = "#{e.message}\n\t#{e.backtrace.join("\n\t")}"
+			self.logger.error(emssg)
+			self.logger(message) unless message.nil? 
+		end
+		
 		def ensureMetricClass(metricClass)
 			return true if @metricClassTrack[metricClass]
 			
 			ensured = false
-			begin
+			self.tryBlock("unable to ensure persistence for class=#{metricClass}") do
 				logic = @logic[:ensureMetricClass][metricClass]
 				return false if logic.nil?
 				ensured = self.instance_exec(metricClass, &logic)
-			rescue => e
-				self.logger.error(e.message)
-				self.logger.error("unable to ensure persistence for class=#{metricClass}")
 			end
 			
 			ensured = ensured ? true : false
@@ -101,15 +114,12 @@ module Yojimbomb
 			return true if @metricTypeTrack[metricClass][metricType]
 			
 			ensured = false
-			begin
+			self.tryBlock("unable to ensure persistence for #{metricType}/#{metricClass}") do
 				logic = @logic[:ensureMetricType][metricClass]
 				ensured = case logic.arity
 					when 1 then self.instance_exec(metricType, &logic)
 					when 2 then self.instance_exec(metricType, metricClass, &logic)
 				end
-			rescue => e
-				self.logger.error(e.message)
-				self.logger.error("unable to ensure persistence for #{metricType}/#{metricClass}")
 			end
 			
 			ensured = ensured ? true : false
@@ -150,14 +160,14 @@ module Yojimbomb
 			
 			groups.each do |mclass,mtypes| 
 				logic = @logic[:store][mclass]
-				mtypes.each do |mtype, typMetrics| begin
-					case logic.arity
+				mtypes.each do |mtype, typMetrics|
+					failMessages = typMetrics.map {|metric| "unable to store metric(#{mclass}/#{mtype}): #{metric}"}
+					 
+					self.tryBlock(*failMessages) do case logic.arity
 						when -2 then self.instance_exec(mtype, *typMetrics, &logic)
 						when -3 then self.instance_exec(mtype, mclass, *typMetrics, &logic)
-					end
-				rescue => e
-					typMetrics.each {|metric| self.logger.error("unable to store metric(#{mclass}/#{mtype}): #{metric}") }
-				end end
+					end end 
+				end
 			end
 
 			self
@@ -169,16 +179,13 @@ module Yojimbomb
 				self.logger.error("unable to find metric-types for metric-class=#{mclass}")
 				return []
 			end
-			 
-			begin
+			
+			self.tryBlock("unable to find metric-types for metric-class=#{mclass}") do
 				logic = @logic[:getTypes][metricClass]
 				return case logic.arity
 					when 0 then self.instance_exec(&logic)
 					when 1 then self.instance_exec(metricClass, &logic) 
-				end
-			rescue => e
-				self.logger.error(e.message)
-				self.logger.error("unable to find metric-types for metric-class=#{mclass}")
+				end	
 			end
 			
 			[]
@@ -191,7 +198,7 @@ module Yojimbomb
 				return []
 			end
 			
-			begin
+			self.tryBlock("unable to find metrics of #{metricType}/#{metricClass}") do
 				logic = @logic[:find][metricClass]
 				prefiltered = case logic.arity
 					when 2 then self.instance_exec(metricType, criteria, &logic)
@@ -199,9 +206,6 @@ module Yojimbomb
 				end
 
 				return criteria.nil? ? prefiltered : criteria.filter(*prefiltered)
-			rescue => e
-				self.logger.error(e.message)
-				self.logger.error("unable to find metrics of #{metricType}/#{metricClass}")
 			end
 			
 			[]
@@ -214,21 +218,20 @@ module Yojimbomb
 		end
 		
 		def remove(metricType, metricClass, *metricIds)
+			failMessage = "unable to remove metrics of #{metricType}/#{metricClass}: #{metricIds.join(';')}"
+			
 			ensured = self.ensureMetricType(metricType,metricClass)
 			unless ensured
-				self.logger.error("unable to remove metrics of #{mtype}/#{mclass}")
+				self.logger.error(failMessage)
 				return self
 			end
 			
-			begin
+			self.tryBlock(failMessage) do
 				logic = @logic[:remove][metricClass]
 				case logic.arity
 					when -2 then self.instance_exec(metricType, *metricIds, &logic)
 					when -3 then self.instance_exec(metricType, metricClass, *metricIds, &logic)
 				end
-			rescue => e
-				self.logger.error(e.message)
-				self.logger.error("unable to remove metrics of #{mtype}/#{mclass}: #{metricIds.join(';')}")
 			end
 			
 			self
