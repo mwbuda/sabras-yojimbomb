@@ -185,6 +185,7 @@ module Test
 				:todStart => lbound, :todStop => ubound
 			)
 			res = metricsKeeper.find(:test,:event,todCrit)
+			assertFalse(res.empty?)
 			res.each do |metric|
 				metricTod = metric.timeOfDay
 				assertTrue(metricTod >= lbound)
@@ -201,6 +202,7 @@ module Test
 				:dow => dow
 			)
 			res = metricsKeeper.find(:test,:event, dowCrit)
+			assertFalse(res.empty?)
 			res.each {|metric| assertTrue( metric.dayOfWeek == dow) }
 		end
 		
@@ -330,6 +332,7 @@ module Test
 				:todStart => lbound, :todStop => ubound
 			)
 			res = metricsKeeper.find(:test,:period,todCrit)
+			assertFalse(res.empty?)
 			res.each do |metric|
 				metricTodStart = metric.startTimeOfDay
 				metricTodStop = metric.stopTimeOfDay
@@ -353,6 +356,7 @@ module Test
 				:dow => dow
 			)
 			res = metricsKeeper.find(:test,:period, dowCrit)
+			assertFalse(res.empty?)
 			res.each do |metric| 
 				numStart = Yojimbomb::DateTime.numericWeekDay( metric.startDayOfWeek )
 				numStop = Yojimbomb::DateTime.numericWeekDay( metric.stopDayOfWeek )
