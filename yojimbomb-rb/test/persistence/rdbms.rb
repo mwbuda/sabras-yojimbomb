@@ -6,9 +6,10 @@ require 'mysql2'
 class Mysql2::Client
 	
 	def query(sql, options = {})
-		puts "!!!SQL: #{sql}"
-		@query_options.each {|opt,v| puts "!!!QOPT #{opt} = v"} unless @query_options.nil?
-		options.each {|opt,v| puts "!!!XOPT #{opt} = #{v}"} 
+		puts "\n!!!SQL: #{sql}"
+		@query_options.each {|opt,v| puts "\tQOPT #{opt} = v"} unless @query_options.nil?
+		options.each {|opt,v| puts "\tXOPT #{opt} = #{v}"} 
+		puts "\n"
 		_query(sql, @query_options.merge(options))
 	end
 	
