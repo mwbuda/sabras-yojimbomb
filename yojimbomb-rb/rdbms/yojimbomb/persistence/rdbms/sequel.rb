@@ -15,22 +15,35 @@ module RDBMS
 	#
 	class SequelMetricsKeeper < Yojimbomb::MetricsKeeper
 		
+		#TODO: eventually use this to swap out column types & other per-dialect adaptations
+		SupportedDialects = [:mysql, :mysql2, :postgres]
+		
 		attr_accessor :tablePrefix
 		
 		def self.connect(*connect, &cblock)
 			self.new( Sequel.connect(*connect, &cblock) )
 		end
 		
-		def initialize(db)
+		def initialize(db, dialect = nil)
 			super()
 			Sequel.default_timezone = :utc
 			@db = db
+			@dialect = dialect.nil? ? @db.adapter_scheme : dialect
+			raise "invalidDbDialect: #{@dialect}" unless SupportedDialects.include?(@dialect)
+			
+			@dataTypes = {
+				:uint => 'integer(10) unsigned',
+				:symbol => 'char(10)',
+				:searchLabel => 'char(32)',
+				:timestamp => 'timestamp',
+				:todValue => 'numeric(4,2)'
+			}
 		end
 		
 		def serializeId(id)
 			hex = id.to_s(16)
 			hex.insert(0, '0' * (32 - hex.size))
-			hex.scan(/.{8,8}/).map {|byte| hxc.hex}
+			hex.scan(/.{8,8}/).map {|byte| byte.hex}
 		end
 		def parseId(id1,id2,id3,id4)
 			[id1,id2,id3,id4].map do |idp| 
@@ -51,46 +64,52 @@ module RDBMS
 		end
 		
 		[:period,:event].each do |mc| defineEnsureMetricClass(mc) do |metricClass|
+			dataTypes = @dataTypes
 			@db.create_table? tableName('meta', metricClass) do
-				primary_key(:pk)
-				column(:metricType, String, :size => 10, :unique => true)
+				primary_key(:pk, dataTypes[:uint])
+				column(:metricType, dataTypes[:symbol], :unique => true)
 			end
 			self
 		end end
 		
 		def createSearchTables(mtype,mclass)
+			dataTypes = @dataTypes
+			
 			mainSearchTable = tableName(mclass,mtype,'sch')
 			ptagSearchTable = tableName(mclass,mtype,'pti')
 			mtagSearchTable = tableName(mclass,mtype,'mti')
 			rmTable = tableName(mclass,mtype,'rmi')
 			
 			@db.create_table? mainSearchTable do 
-				primary_key(:pk)
-				column(:label, String, :size => 32)
+				primary_key(:pk, dataTypes[:uint])
+				column(:label, dataTypes[:searchLabel])
+				column(:created, dataTypes[:timestamp])
 			end
 			
 			[ptagSearchTable, mtagSearchTable].each do |tagSearchTable| @db.create_table? tagSearchTable do
-				primary_key(:pk)
-				foreign_key(:sid, mainSearchTable, :type => Integer, :unsigned => true, :null => false, :on_delete => :cascade)
-				column(:tagv, String, :size => 10, :null => false)
-				unique(:sid, :tagv)
+				primary_key(:pk, :type => dataTypes[:uint])
+				foreign_key(:sid, mainSearchTable, :type => dataTypes[:uint], :null => false, :on_delete => :cascade)
+				column(:tagv, dataTypes[:symbol], :null => false)
+				unique([:sid, :tagv])
 			end end
 			
 			@db.create_table? rmTable do
-				primary_key(:pk)
-				foreign_key(:sid, mainSearchTable, :type => Integer, :unsigned => true, :null => false, :on_delete => :cascade)
+				primary_key(:pk, dataTypes[:uint])
+				foreign_key(:sid, mainSearchTable, :type => dataTypes[:uint], :null => false, :on_delete => :cascade)
 					
-				column(:mid1, Integer, :unsigned => true)
-				column(:mid2, Integer, :unsigned => true)
-				column(:mid3, Integer, :unsigned => true)
-				column(:mid4, Integer, :unsigned => true)
+				column(:mid1, dataTypes[:uint], :null => false)
+				column(:mid2, dataTypes[:uint], :null => false)
+				column(:mid3, dataTypes[:uint], :null => false)
+				column(:mid4, dataTypes[:uint], :null => false)
 				
-				unique(:sid, :mid1, :mid2, :mid3, :mid4)
+				unique([:sid, :mid1, :mid2, :mid3, :mid4])
 			end
 			
 		end
 		
 		def createTagTables(mtype, mclass)
+			dataTypes = @dataTypes
+			
 			#minor tag main, link, & search tables
 			mtags  = tableName(mclass,mtype,'mt')
 			mtagsx = tableName(mclass,mtype,'mtx')
@@ -99,18 +118,18 @@ module RDBMS
 			ptags  = tableName(mclass,mtype,'pt')
 			ptagsx = tableName(mclass,mtype,'ptx')
 			
-			[ [ptags,ptagsx,ptagss], [mtags,mtagsx,mtagss] ].each do |tags,tagx, tagss|
+			[ [ptags,ptagsx], [mtags,mtagsx] ].each do |tags,tagx|
 				@db.create_table? tags do 
-					primary_key(:pk)
-					column(:tagv, String, :size => 10, :unique => true)
+					primary_key(:pk, dataTypes[:uint])
+					column(:tagv, dataTypes[:symbol], :unique => true)
 				end
 				@db.create_table? tagx do
-					foreign_key(:tid, tags, :type => Integer, :unsigned => true, :null => false, :on_delete => :cascade)
+					foreign_key(:tid, tags, :type => dataTypes[:uint], :null => false, :on_delete => :cascade)
 					
-					column(:mid1, Integer, :unsigned => true)
-					column(:mid2, Integer, :unsigned => true)
-					column(:mid3, Integer, :unsigned => true)
-					column(:mid4, Integer, :unsigned => true)
+					column(:mid1, dataTypes[:uint], :null => false)
+					column(:mid2, dataTypes[:uint], :null => false)
+					column(:mid3, dataTypes[:uint], :null => false)
+					column(:mid4, dataTypes[:uint], :null => false)
 					
 					primary_key([:tid,:mid1,:mid2,:mid3,:mid4])
 				end
@@ -118,6 +137,8 @@ module RDBMS
 		end
 		
 		defineEnsureMetricType(:event) do |metricType, mclass|
+			dataTypes = @dataTypes
+			
 			meta = tableName('meta', mclass)
 			table  = tableName(mclass,metricType)
 			rmTracker = tableName(mclass,metricType, 'rm')
@@ -126,15 +147,15 @@ module RDBMS
 				@db[meta] << {:metricType => cleanDbSym(metricType)}
 					
 				@db.create_table?(table) do
-					column(:id1, Integer, :unsigned => true)
-					column(:id2, Integer, :unsigned => true)
-					column(:id3, Integer, :unsigned => true)
-					column(:id4, Integer, :unsigned => true)
+					column(:id1, dataTypes[:uint], :null => false)
+					column(:id2, dataTypes[:uint], :null => false)
+					column(:id3, dataTypes[:uint], :null => false)
+					column(:id4, dataTypes[:uint], :null => false)
 					primary_key([:id1,:id2,:id3,:id4])
 					
-					column(:count, Integer)
-					column(:occur,:timestamp)
-					column(:qty, Integer)
+					column(:count, dataTypes[:uint], :null => false)
+					column(:occur, dataTypes[:timestamp])
+					column(:qty, dataTypes[:uint], :null => false)
 				end
 				
 				createTagTables(metricType, mclass)
@@ -145,6 +166,8 @@ module RDBMS
 		end
 		
 		defineEnsureMetricType(:period) do |metricType, metricClass|
+			dataTypes = @dataTypes
+			
 			meta = tableName('meta', metricClass)
 			table  = tableName(metricClass, metricType)
 			rmTracker = tableName(mclass,metricType, 'rm')
@@ -153,16 +176,16 @@ module RDBMS
 				@db[meta] << {:metricType => cleanDbSym(metricType)}
 					
 				@db.create_table?(table) do
-					column(:id1, Integer, :unsigned => true)
-					column(:id2, Integer, :unsigned => true)
-					column(:id3, Integer, :unsigned => true)
-					column(:id4, Integer, :unsigned => true)
+					column(:id1, dataTypes[:uint], :null => false)
+					column(:id2, dataTypes[:uint], :null => false)
+					column(:id3, dataTypes[:uint], :null => false)
+					column(:id4, dataTypes[:uint], :null => false)
 					primary_key([:id1,:id2,:id3,:id4])
 					
-					column(:count,Integer)
-					[:pstart,:pstop].each {|col| column(col,:timestamp)}
-					[:todstart,:todstop].each {|col| column(col, BigDecimal, :size => [4,2])}
-					column(:dur, Integer)
+					column(:count, dataTypes[:uint], :null => false)
+					[:pstart,:pstop].each {|col| column(col, dataTypes[:timestamp]) }
+					[:todstart,:todstop].each {|col| column(col, dataTypes[:todValue])}
+					column(:dur, dataTypes[:uint])
 				end
 				
 				createTagTables(metricType, mclass)
@@ -225,14 +248,17 @@ module RDBMS
 				[ptb, pxtb, metric.primaryTags]
 			].each do |tb, xtb, tags| tags.uniq.each do |tag|
 				tagv = cleanDbSym(tag)
-				tagid = @db[tb][:tagv => tagv].get(:pk)
+				
+				tagid = nil
+				tagRow = @db[tb][:tagv => tagv]
+				tagid = tagRow[:pk] unless tagRow.nil?
 				if tagid.nil?
 					@db[tb] << {:tagv => tagv}
-					tagid = @db[tb][:tagv => tagv].get(:pk)
+					tagid = @db[tb][:tagv => tagv][:pk]
 				end
 				
 				noLink = @db[xtb][:tid => tagid, :mid1 => ids[0], :mid2 => ids[1], :mid3 => ids[2], :mid4 => ids[3] ].nil?
-				@tb[xtb] << {:tid => tagid, :mid1 => ids[0], :mid2 => ids[1], :mid3 => ids[2], :mid4 => ids[3]}	
+				@db[xtb] << {:tid => tagid, :mid1 => ids[0], :mid2 => ids[1], :mid3 => ids[2], :mid4 => ids[3]}	
 			end end
 			
 			self
@@ -241,7 +267,7 @@ module RDBMS
 		def openSearch(metricType, metricClass)
 			searchMainTable = tableName(metricClass, metricType, 'sch')
 			slabel = Yojimbomb.idValue.to_s(16)
-			@db[searchMainTable] << {:label => slabel}
+			@db[searchMainTable] << {:label => slabel, :created => Time.now}
 			@db[searchMainTable][:label => slabel][:pk]
 		end
 		
@@ -292,13 +318,15 @@ module RDBMS
 			
 			filterClause = [:mid1,:mid2,:mid3,:mid4].map {|mid| "(#{mid}=?)"}.join(' and ')
 			
-			metric.withPimaryTags(@db[pMnTbl].where(
+			rawpts = @db[pMnTbl].where(
 				"pk in (select tid from #{pLnTbl} where #{filterClause})", *ids
-			).map(:tagv))
+			).map(:tagv).map {|tagv| tagv.to_sym}
+			metric.withPrimaryTags(*rawpts)
 			
-			metric.withMinorTags(@db[mMnTbl].where(
+			rawmts = @db[mMnTbl].where(
 				"pk in (select tid from #{mLnTbl} where #{filterClause})", *ids
-			).map(:tagv))
+			).map(:tagv).map {|tagv| tagv.to_sym}
+			metric.withMinorTags(*rawmts)
 			
 		end
 		
@@ -325,7 +353,7 @@ module RDBMS
 					:count => raw[:count],
 					:quantity => raw[:qty],
 				}
-				res << Yojimbomb::Event.new(metricType, occur, sundry)
+				res << Yojimbomb::EventMetric.new(metricType, occur, sundry)
 			end
 			
 			#populate tags
@@ -362,7 +390,7 @@ module RDBMS
 					:todStart => raw[:todstart],
 					:todStop => raw[:todstop]
 				}
-				res << Yojimbomb::Period.new(metricType, start, stop, duration, sundry)
+				res << Yojimbomb::PeriodMetric.new(metricType, start, stop, duration, sundry)
 			end
 			
 			#populate tags
@@ -378,14 +406,17 @@ module RDBMS
 			
 			searchId = openSearch(metricType, mclass) 
 			
+			serializedIds = {}
+			
 			rmTrackItems = ids.map do |id|
 				xids = serializeId(id)
+				serializedIds[id] = xids
 				{:sid => searchId, :mid1 => xids[0], :mid2 => xids[1], :mid3 => xids[2], :mid4 => xids[3]}
 			end
 			@db[rmTable].multi_insert(rmTrackItems)
 			
-			filterClause = [:mid1,:mid2,:mid3,:mid4].map {|mid| "#{mid}=?"}.join(' and ')			
-			@db[mnTable].where("(select count(pk) from #{rmTable} where (sid=?) and #{filterClause}) > 0", searchId, *ids).delete
+			filterClause = [1,2,3,4].map {|i| "mid#{i}=id#{i}"}.join(' and ')			
+			@db[mnTable].where("(select count(pk) from #{rmTable} where (sid=?) and #{filterClause}) > 0", searchId).delete
 			
 			closeSearch(metricType, mclass, searchId)
 			
