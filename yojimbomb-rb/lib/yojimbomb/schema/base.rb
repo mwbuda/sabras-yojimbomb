@@ -4,6 +4,25 @@ require 'yojimbomb/schema/datetime'
 
 module Yojimbomb
 
+	MaxId = ('ff'*16).to_i(16)
+	MinId = 0
+
+	def self.idValue(input = SecureRandom.uuid.gsub(/[-]/, ''))
+		cand = case input
+			when Symbol then input.to_s.to_i(16)	
+			when String then input.to_i(16)
+			when nil then Yojimbomb.idValue()
+			when Numeric then input.to_i
+			else nil
+		end
+		
+		raise :invalidId if cand.nil?
+		raise :invalidId if cand > Yojimbomb::MaxId
+		raise :invalidId if cand < Yojimbomb::MinId 
+		cand
+	end
+
+
 	# a nonsense error is raised/thrown whenver a nonsensical situation is created;
 	#	eg. declaring a stop time before a start time.
 	class NonsenseError < StandardError
@@ -26,7 +45,7 @@ module Yojimbomb
 			@primaryTags = xsundry[:primary].uniq
 			@minorTags = xsundry[:minor].uniq
 				
-			@id = xsundry[:id].nil? ? SecureRandom.uuid() : xsundry[:id]
+			@id = Yojimbomb.idValue(xsundry[:id])
 		end
 		protected :initialize
 		
