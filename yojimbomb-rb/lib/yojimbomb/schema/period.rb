@@ -21,13 +21,13 @@ module Yojimbomb
 					rawTodStart = sundry[:todStart]
 					rawTodStart = sundry[:tod] if rawTodStart.nil?
 					
-					todStartTime = Yojimbomb.changeToTimeOfDay(start, rawTodStart)
-					@todStart = Yojimbomb.timeOfDay(todStartTime)
+					todStartTime = Yojimbomb::DateTime.changeToTimeOfDay(start, rawTodStart)
+					@todStart = Yojimbomb::DateTime.timeOfDay(todStartTime)
 					
 					rawTodStop = sundry[:todStop]
 					unless rawTodStop.nil?
-						todStopTime = Yojimbomb.changeToTimeOfDay(start, rawTodStop)
-						@todStop = Yojimbomb.timeOfDay(todStopTime)
+						todStopTime = Yojimbomb::DateTime.changeToTimeOfDay(start, rawTodStop)
+						@todStop = Yojimbomb::DateTime.timeOfDay(todStopTime)
 					end	
 				else
 					@todStart = Yojimbomb::DateTime.timeOfDay(self.start)
@@ -69,14 +69,24 @@ module Yojimbomb
 			
 			stod = self.startTimeOfDay(criteria.timezone)
 			etod = self.stopTimeOfDay(criteria.timezone)
-
-			if (stod >= criteria.todStart) && (stod <= criteria.todStop)
-				true
-			elsif (etod >= criteria.todStart) && (etod <= criteria.todStop)
-				true
+			cstod = criteria.todStart
+			cetod = criteria.todStop
+			
+			bounds = []
+			if cetod < cstod
+				bounds << [cstod, 23.99 ]
+				bounds << [0.0, cetod]
 			else
-				false
+				bounds << [cstod, cetod]
 			end
+
+			res = false
+			bounds.each do |bstod, betod|
+				break if res
+				res |= (stod >= bstod) && (stod <= betod)
+				res |= (etod >= bstod) && (etod <= betod)				
+			end
+			res
 		end
 		
 		def matchDayOfWeek(criteria)

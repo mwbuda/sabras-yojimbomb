@@ -100,8 +100,25 @@ module Yojimbomb
 		
 		def matchTimeOfDay(criteria)
 			return true if criteria.todStart.nil?
+			
 			tod = self.timeOfDay(criteria.timezone)
-			(tod >= criteria.todStart) && (tod <= criteria.todStop)
+			cstod = criteria.todStart
+			cetod = criteria.todStop
+			
+			bounds = []
+			if (cetod < cstod)
+				bounds << [cstod, 23.99]
+				bounds << [0.0, cetod]
+			else
+				bounds << [cstod, cetod]
+			end
+			
+			res = false
+			bounds.each do |bstod, betod|
+				break if res
+				res |= (tod >= bstod) && (tod <= betod)
+			end
+			res
 		end
 		
 		def matchDayOfWeek(criteria)
@@ -151,8 +168,12 @@ module Yojimbomb
 			unless todStart.nil?
 				@todStop = xsundry[:todStop]
 				@todStop = todStart + xsundry[:todIncrement] if @todStop.nil?
-				@todStart -= @todStart % 0.01
-				@todStop  -= @todStop  % 0.01
+				@todStart = @todStart.to_i + ( ((@todStart * 100).to_i % 100).to_f / 100.0)
+				@todStop  = @todStop.to_i  + ( ((@todStop  * 100).to_i % 100).to_f / 100.0)
+				raise :invalidTodValue if @todStart < 0
+				raise :invalidTodValue if @todStop < 0
+				raise :invalidTodValue if @todStart > 23.99
+				raise :invalidTodValue if @todStop > 23.99 
 			end
 				
 			@dow = xsundry[:dow]

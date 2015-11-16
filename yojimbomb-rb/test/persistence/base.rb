@@ -179,7 +179,7 @@ module Test
 		tods.uniq.each do |tod|
 			puts "\n\ttest tod #{tod}"
 			lbound = tod < 1.0  ? 0.0 : tod - 1.0
-			ubound = tod > 22.0 ? 23.0 : tod + 1.0
+			ubound = tod > 22.0 ? 23.99 : tod + 1.0
 			todCrit = critOccMax = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
 				:todStart => lbound, :todStop => ubound
@@ -326,7 +326,16 @@ module Test
 		tods.uniq.each do |stod, etod|
 			puts "\n\ttest tod #{stod}..#{etod}"
 			lbound = stod < 1.0  ? 0.0 : stod - 1.0
-			ubound = etod > 22.0 ? 23.0 : etod + 1.0
+			ubound = etod > 22.0 ? 23.99 : etod + 1.0
+			
+			bounds = []
+			if ubound < lbound
+				bounds << [lbound, 23.99]
+				bounds << [0.0, ubound]
+			else
+				bounds << [lbound, ubound]
+			end
+			
 			todCrit = critOccMax = Yojimbomb::Criteria.new(
 				minTime - HourAmt/2, maxTime + HourAmt/2,
 				:todStart => lbound, :todStop => ubound
@@ -336,9 +345,14 @@ module Test
 			res.each do |metric|
 				metricTodStart = metric.startTimeOfDay
 				metricTodStop = metric.stopTimeOfDay
-				matchTodStart = (metricTodStart >= lbound) && (metricTodStart <= ubound)
-				matchTodStop = (metricTodStop >= lbound) && (metricTodStop <= ubound)
-				assertTrue(matchTodStart || matchTodStop)
+				
+				doesMatch = false
+				bounds.each do |bs,be|
+					break if doesMatch
+					doesMatch |= (metricTodStart >= bs) && (metricTodStart <= be)
+					doesMatch |= (metricTodStop >= bs) && (metricTodStop <= be)
+				end
+				assertTrue(doesMatch)
 			end			
 		end
 		

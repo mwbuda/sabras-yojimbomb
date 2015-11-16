@@ -109,7 +109,8 @@ module DateTime
 		
 		minFloat = (100 * minOfHour.to_i / 60).to_f / 100.0
 		minFloat -= minFloat % 0.01
-		hour.to_f + minFloat
+		res = hour.to_f + minFloat
+		res > 23.99 ? 23.99 : res
 	end
 	
 	def self.timeOfDay(time, zone_offset = nil)
