@@ -74,9 +74,7 @@ module DateTime
 			else raise InvalidDateTime.new(raw)
 		end
 		
-		raretime = Time.at(raretime.to_i) if (raretime.to_f % 1) > 0
-		
-		raretime.getutc
+		Time.at(raretime.to_i).getutc
 	end
 	
 	def self.numericWeekDay(wd)
@@ -104,11 +102,14 @@ module DateTime
 	end
 	
 	def self.todValue(hour, minOfHour)
-		minExcess = (minOfHour / 60).to_i
-		minRem = (minOfHour - (minExcess * 60)).to_i
-		minFloat = (100 * minRem / 60).to_f / 100.0
+		raise :invalidTodValue if hour < 0
+		raise :invalidTodValue if minOfHour < 0
+		raise :invalidTodValue if hour.to_i > 23
+		raise :invalidTodValue if minOfHour.to_i > 59
+		
+		minFloat = (100 * minOfHour.to_i / 60).to_f / 100.0
 		minFloat -= minFloat % 0.01
-		(hour.to_i + minExcess).to_f + minFloat
+		hour.to_f + minFloat
 	end
 	
 	def self.timeOfDay(time, zone_offset = nil)
