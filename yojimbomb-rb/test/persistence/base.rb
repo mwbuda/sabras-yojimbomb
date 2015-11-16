@@ -143,7 +143,7 @@ module Test
 		
 		times.each do |time|
 			ptags.each do |p1| ptags.each do |p2| mtags.each do |m1| mtags.each do |m2| 
-				id = SecureRandom.uuid 
+				id = Yojimbomb.idValue
 				index[nil] << id
 				index[time] << id
 				metric = Yojimbomb::EventMetric.new(:test, time, :id => id, :primary => [p1,p2], :minor => [m1,m2] )
@@ -288,7 +288,7 @@ module Test
 		
 		times.each do |start, stop|
 			ptags.each do |p1| ptags.each do |p2| mtags.each do |m1| mtags.each do |m2| 
-				id = SecureRandom.uuid 
+				id = Yojimbomb.idValue 
 				index[nil] << id
 				index[start] << id
 				metrics << Yojimbomb::PeriodMetric.new(
