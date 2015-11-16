@@ -26,7 +26,7 @@ module Yojimbomb
 					
 					rawTodStop = sundry[:todStop]
 					unless rawTodStop.nil?
-						todStopTime = Yojimbomb::DateTime.changeToTimeOfDay(start, rawTodStop)
+						todStopTime = Yojimbomb::DateTime.changeToTimeOfDay(stop, rawTodStop)
 						@todStop = Yojimbomb::DateTime.timeOfDay(todStopTime)
 					end	
 				else
