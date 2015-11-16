@@ -16,7 +16,9 @@ module RDBMS
 	class SequelMetricsKeeper < Yojimbomb::MetricsKeeper
 		
 		#TODO: eventually use this to swap out column types & other per-dialect adaptations
-		SupportedDialects = [:mysql, :mysql2, :postgres]
+		SupportedDialects = [
+			:mysql, :mysql2,
+		]
 		
 		attr_accessor :tablePrefix
 		
@@ -36,7 +38,7 @@ module RDBMS
 				:symbol => 'char(10)',
 				:searchLabel => 'char(32)',
 				:timestamp => 'timestamp',
-				:todValue => 'numeric(4,2)'
+				:todValue => 'integer(4) unsigned'
 			}
 		end
 		
@@ -170,7 +172,7 @@ module RDBMS
 			
 			meta = tableName('meta', metricClass)
 			table  = tableName(metricClass, metricType)
-			rmTracker = tableName(mclass,metricType, 'rm')
+			rmTracker = tableName(metricClass, metricType, 'rm')
 			
 			if @db[meta][:metricType => cleanDbSym(metricType)].nil?
 				@db[meta] << {:metricType => cleanDbSym(metricType)}
@@ -188,8 +190,8 @@ module RDBMS
 					column(:dur, dataTypes[:uint])
 				end
 				
-				createTagTables(metricType, mclass)
-				createSearchTables(metricType, mclass)
+				createTagTables(metricType, metricClass)
+				createSearchTables(metricType, metricClass)
 			end
 			
 			self
@@ -219,12 +221,12 @@ module RDBMS
 			
 			periods.each do |period|
 			self.tryBlock("unable to store metric(#{mtype}/#{mclass}) #{period}") do
-				ids = serializeId(event.id)
+				ids = serializeId(period.id)
 				@db[table] << {
 					:id1 => ids[0], :id2 => ids[1], :id3 => ids[2], :id4 => ids[3],
-					:count => event.count, 
+					:count => period.count, 
 					:pstart => period.start, :pstop => period.stop,
-					:todstart => period.startTimeOfDay, :todstop => period.stopTimeOfDay,
+					:todstart => (period.startTimeOfDay * 100).to_i, :todstop => (period.stopTimeOfDay * 100).to_i,
 					:dur => period.duration,
 				}
 				self.persistTags(period)
@@ -290,7 +292,7 @@ module RDBMS
 				next if tags.empty?
 				tagMnTb = tableName(metricClass, metricType, "#{tx}t")
 				tagLnTb = tableName(metricClass, metricType, "#{tx}tx")
-				tagTsTb = tableName(metricClass, metricType, "#{tx}ts")
+				tagTsTb = tableName(metricClass, metricType, "#{tx}ti")
 				
 				temps = tags.map do |tag|
 					{:sid => searchId, :tagv => cleanDbSym(tag)}
@@ -300,7 +302,7 @@ module RDBMS
 				tagvFilterClause = "tid in (select pk from #{tagMnTb} where tagv in (select tagv from #{tagTsTb} where sid=?))"
 				idFilterClause = [1,2,3,4].map {|i| "(mid#{i}=id#{i})"}.join(' and ')
 				
-				dset = dset.where("( select count(pk) from #{tagLnTb} where (#{tagvFilterClause}) and #{idFilterClause} ) > 0", searchId)
+				dset = dset.where("( select count(*) from #{tagLnTb} where (#{tagvFilterClause}) and #{idFilterClause} ) > 0", searchId)
 			end
 			
 			dset
@@ -384,11 +386,12 @@ module RDBMS
 				start = raw[:pstart]
 				stop = raw[:pstop]
 				duration = raw[:dur]
+				
 				sundry = {
 					:id => parseId(raw[:id1], raw[:id2], raw[:id3], raw[:id4]),
 					:count => raw[:count],
-					:todStart => raw[:todstart],
-					:todStop => raw[:todstop]
+					:todStart => ( (raw[:todstart] / 100) + ((raw[:todstart] % 100).to_f / 100.0) ).to_f,
+					:todStop => ( (raw[:todstop] / 100) + ((raw[:todstop] % 100).to_f / 100.0) ).to_f
 				}
 				res << Yojimbomb::PeriodMetric.new(metricType, start, stop, duration, sundry)
 			end
@@ -416,7 +419,7 @@ module RDBMS
 			@db[rmTable].multi_insert(rmTrackItems)
 			
 			filterClause = [1,2,3,4].map {|i| "mid#{i}=id#{i}"}.join(' and ')			
-			@db[mnTable].where("(select count(pk) from #{rmTable} where (sid=?) and #{filterClause}) > 0", searchId).delete
+			@db[mnTable].where("(select count(*) from #{rmTable} where (sid=?) and #{filterClause}) > 0", searchId).delete
 			
 			closeSearch(metricType, mclass, searchId)
 			
