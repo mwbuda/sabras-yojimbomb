@@ -17,8 +17,6 @@ module Yojimbomb
 			end
 			
 			populateTod(start, stop, sundry)
-			
-			puts "!!! init tod: #{sundry[:todStart]} => #{@todStart}, #{sundry[:todStop]} => #{@todStop}"
 		end
 		
 		def populateTod(rawStart, rawStop, sundry = {})
