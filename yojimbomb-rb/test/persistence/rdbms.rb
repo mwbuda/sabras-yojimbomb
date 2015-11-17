@@ -3,17 +3,16 @@ require './base'
 require 'yojimbomb/persistence/rdbms'
 require 'mysql2'
 
-class Mysql2::Client
-	
-	def query(sql, options = {})
-		puts "\n!!!SQL: #{sql}"
-		@query_options.each {|opt,v| puts "\tQOPT #{opt} = v"} unless @query_options.nil?
-		options.each {|opt,v| puts "\tXOPT #{opt} = #{v}"} 
-		puts "\n"
-		_query(sql, @query_options.merge(options))
-	end
-	
-end
+#un/comment to debug SQL statements
+#class Mysql2::Client	
+#	def query(sql, options = {})
+#		puts "\n!!!SQL: #{sql}"
+#		@query_options.each {|opt,v| puts "\tQOPT #{opt} = #{v}"} unless @query_options.nil?
+#		options.each {|opt,v| puts "\tXOPT #{opt} = #{v}"} 
+#		puts "\n"
+#		_query(sql, @query_options.merge(options))
+#	end	
+#end
 
 
 #$DBConnect = $*[0]
