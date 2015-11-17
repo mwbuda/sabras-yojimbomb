@@ -10,35 +10,60 @@ module Yojimbomb
 			super(type, :period, start, sundry)
 			@stop = Yojimbomb::DateTime.parseTime(stop)
 			
-			if (duration == :whole)
-				@duration = (self.stop - self.start)
-				@todStart = Yojimbomb::DateTime.timeOfDay(self.start)
-				@todStop = Yojimbomb::DateTime.timeOfDay(self.stop)
+			@duration = if (duration == :whole)
+				(self.stop - self.start) / 60
 			else
-				@duration = duration
+				duration
+			end
 			
-				if sundry.keys.include?(:tod) or sundry.keys.include?(:todStart)
-					rawTodStart = sundry[:todStart]
-					rawTodStart = sundry[:tod] if rawTodStart.nil?
-					
-					todStartTime = Yojimbomb::DateTime.changeToTimeOfDay(start, rawTodStart)
-					@todStart = Yojimbomb::DateTime.timeOfDay(todStartTime)
-					
-					rawTodStop = sundry[:todStop]
-					unless rawTodStop.nil?
-						todStopTime = Yojimbomb::DateTime.changeToTimeOfDay(stop, rawTodStop)
-						@todStop = Yojimbomb::DateTime.timeOfDay(todStopTime)
-					end	
-				else
-					@todStart = Yojimbomb::DateTime.timeOfDay(self.start)
-				end
+			populateTod(start, stop, sundry)
+			
+			puts "!!! init tod: #{sundry[:todStart]} => #{@todStart}, #{sundry[:todStop]} => #{@todStop}"
+		end
+		
+		def populateTod(rawStart, rawStop, sundry = {})
+			todStartKey = nil
+			[:utcTodStart, :todStart, :tod].each do |startKey|
+				next unless sundry.keys.include?(startKey)
+				todStartKey = startKey
+				break
+			end
+			
+			@todStart = unless todStartKey.nil?
+				rawTodStart = sundry[todStartKey]
+				raise :invalidTodValue if rawTodStart < 0
+				raise :invalidTodValue if rawTodStart > 23.99
 				
-				if @todStop.nil?
-					num_days = Yojimbomb::DateTime.daysBetween(self.start,self.stop) + 1
-					mins_per_day = @duration / num_days
-					elapsed_change = ((mins_per_day * 10) / 6).to_f / 100.0
-					@todStop = @todStart + elapsed_change
+				unless (todStartKey == :utcTodStart) || (rawStart.utc_offset == 0)
+					todStartTime = Yojimbomb::DateTime.changeToTimeOfDay(rawStart, rawTodStart)
+					Yojimbomb::DateTime.timeOfDay(todStartTime)
+				else
+					rawTodStart
 				end
+			else
+				Yojimbomb::DateTime.timeOfDay(self.start)
+			end
+			
+			todStopKey = nil
+			[:utcTodStop,:todStop].each do |stopKey|
+				next unless sundry.keys.include?(stopKey)
+				todStopKey = stopKey
+				break
+			end
+			
+			@todStop = unless todStopKey.nil?
+				rawTodStop = sundry[todStopKey]
+				raise :invalidTodValue if rawTodStop < 0
+				raise :invalidTodValue if rawTodStop > 23.99
+				
+				@todStop = unless (todStopKey == :utcTodStop) || (rawStop.utc_offset == 0)
+					todStopTime = Yojimbomb::DateTime.changeToTimeOfDay(rawStop, rawTodStop)
+					Yojimbomb::DateTime.timeOfDay(todStopTime)
+				else
+					rawTodStop
+				end
+			else
+				Yojimbomb::DateTime.timeOfDay(self.stop)
 			end
 		end
 		
@@ -46,13 +71,15 @@ module Yojimbomb
 		alias :startDayOfWeek :dayOfWeek
 		
 		def timeOfDay(zone = nil)
+			return @todStart if zone.nil?
 			tod_time = Yojimbomb::DateTime.changeToTimeOfDay(self.start,@todStart)
 			Yojimbomb::DateTime.timeOfDay(tod_time,zone)
 		end
 		alias :startTimeOfDay :timeOfDay
 				
 		def stopTimeOfDay(zone = nil)
-			tod_time = Yojimbomb::DateTime.changeToTimeOfDay(self.start,@todStop)
+			return @todStop if zone.nil?
+			tod_time = Yojimbomb::DateTime.changeToTimeOfDay(self.stop,@todStop)
 			Yojimbomb::DateTime.timeOfDay(tod_time,zone)
 		end
 		
