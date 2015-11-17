@@ -278,7 +278,7 @@ module RDBMS
 			table = tableName(metricClass, metricType,"#{tagsym}ti")
 			
 			raws = tags.map do |tagv|
-				{:sid => searchId, :tagv => tagv}
+				{:sid => searchId, :tagv => cleanDbSym(tagv)}
 			end
 			@db[table].multi_insert(raws)
 			
@@ -330,15 +330,15 @@ module RDBMS
 			#	note that this does NOT include dow & tod based filtering,
 			#	which is done post-query to avoid extra dicking around w/ timezones in db
 			unless criteria.nil?
-				dset = dset.where {startTimeField >= criteria.start}
-				dset = dset.where {stopTimeField <= criteria.stop}
+				dset = dset.where("#{startTimeField} >= ?", criteria.start)
+				dset = dset.where("#{stopTimeField} <= ?", criteria.stop)
 				
 				{
 					'p' => criteria.primaryTags,
 					'm' => criteria.minorTags
 				}.each do |tagsym, tags|
 					next if tags.empty?
-					searchTbl = buildPrimaryTagSearch(metricType, metricClass, tagsym, searchId, *tags)
+					searchTbl = buildTagSearch(metricType, metricClass, tagsym, searchId, *tags)
 					tagMnTbl = tableName(metricClass, metricType, "#{tagsym}t")
 					tagLnTbl = tableName(metricClass, metricType, "#{tagsym}tx")
 					dset = dset.where(
@@ -359,7 +359,11 @@ module RDBMS
 			end
 			
 			tagResults = getTagData(metricType, metricClass, searchId, *indexResults.keys)
-			tagResults.each {|id, tagData| indexResults[id].merge!(tagData) }
+			tagResults.each do |id, tagData|
+				res = indexResults[id]
+				next if res.nil?
+				res.merge!(tagData)
+			end
 			
 			closeSearch(metricType, metricClass, searchId)
 			
