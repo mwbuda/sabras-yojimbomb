@@ -82,7 +82,7 @@ module Test
 	#save 1 period, retrieve, delete
 	def self.testBasicPeriod(metricsKeeper)
 		period = Yojimbomb::PeriodMetric.new(
-			:test, Time.now, Time.now + HourAmt, HourAmt/2,
+			:test, Time.now, Time.now + HourAmt, 30,
 			:quantity => 4,
 			:count => 5,
 			:primary => [:a,:b,:c],
