@@ -7,7 +7,7 @@ EOD
 Gem::Specification.new do |gem|
 	gem.authors = 'Sabras Soft LLC'
 	gem.name = 'yojimbomb'
-	gem.version = '1.0.0'
+	gem.version = '1.1.0'
 	gem.date = Date.today.to_s
 	gem.summary = 'Sabras Yojimbomb: Flexible Metrics Data'
 	gem.description = DESC

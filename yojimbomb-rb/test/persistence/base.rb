@@ -48,8 +48,8 @@ module Test
 			:test, Time.now,
 			:quantity => 4,
 			:count => 5,
-			:primary => [:a,:b,:c],
-			:minor => [:x,:y,:z]	
+			:primary => [:a,:b,:c, "abcdefg=1234567".to_sym],
+			:minor => [:x,:y,:z, "1234567=abcdefg"]	
 		)
 		
 		metricsKeeper.store(event)
@@ -67,9 +67,9 @@ module Test
 		assertTrue(retEvent.metricType == :test)
 		assertTrue(retEvent.quantity == 4)
 		assertTrue(retEvent.count == 5)
-		assertTrue(retEvent.primaryTags.size == 3)
+		assertTrue(retEvent.primaryTags.size == 4)
 		event.primaryTags.each {|pt| assertTrue(retEvent.primaryTags.include?(pt))} 
-		assertTrue(retEvent.minorTags.size == 3)
+		assertTrue(retEvent.minorTags.size == 4)
 		event.minorTags.each {|mt| assertTrue(retEvent.minorTags.include?(mt))}
 		assertTrue(event.occurence == retEvent.occurence)
 		
