@@ -6,7 +6,7 @@ module Yojimbomb
 
 	MaxId = ('ff'*16).to_i(16)
 	MinId = 0
-	InvalidTagChars = /[^a-zA-Z0-9_=.$%&\#@+-*\]+/
+	InvalidTagChars = /(?:[^a-z0-9]|[^_=.$%&\#@+*]|[-])+/i
 
 	def self.idValue(input = SecureRandom.uuid.gsub(/[-]/, ''))
 		cand = case input
