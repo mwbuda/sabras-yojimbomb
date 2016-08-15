@@ -23,7 +23,7 @@ module Yojimbomb
 		cand
 	end
 	
-	def tagValue(tag)
+	def self.tagValue(tag)
 		xtag = tag
 		{
 			/\s+/ => '_',
@@ -34,7 +34,7 @@ module Yojimbomb
 		xtag.empty? ? nil : xtag
 	end
 	
-	def tagValues(*tags)
+	def self.tagValues(*tags)
 		tags.map {|tag| Yojimbomb::tagValue(tag)}.compact.uniq
 	end
 
