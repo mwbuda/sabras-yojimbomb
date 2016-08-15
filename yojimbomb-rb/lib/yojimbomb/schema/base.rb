@@ -6,7 +6,7 @@ module Yojimbomb
 
 	MaxId = ('ff'*16).to_i(16)
 	MinId = 0
-	InvalidTagChars = /[^a-zA-Z0-9_=.$%&\#@ ]+/
+	InvalidTagChars = /[^a-zA-Z0-9_=.$%&\#@+-*\]+/
 
 	def self.idValue(input = SecureRandom.uuid.gsub(/[-]/, ''))
 		cand = case input
@@ -24,7 +24,13 @@ module Yojimbomb
 	end
 	
 	def tagValue(tag)
-		xtag = tag.gsub(Yojimbomb::InvalidTagChars, '').to_s.downcase.strip[0..15]
+		xtag = tag
+		{
+			/\s+/ => '_',
+			/[_]{2,}/ => '_',
+			Yojimbomb::InvalidTagChars => ''
+		}.each {|clean,repl| xtag = xtag.gsub(clean, repl) }
+		xtag = xtag.to_s.downcase.strip[0..15]
 		xtag.empty? ? nil : xtag
 	end
 	
