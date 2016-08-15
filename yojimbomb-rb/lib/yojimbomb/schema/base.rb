@@ -24,14 +24,14 @@ module Yojimbomb
 	end
 	
 	def self.tagValue(tag)
-		xtag = tag
+		xtag = tag.to_s
 		{
 			/\s+/ => '_',
 			/[_]{2,}/ => '_',
 			Yojimbomb::InvalidTagChars => ''
 		}.each {|clean,repl| xtag = xtag.gsub(clean, repl) }
-		xtag = xtag.to_s.downcase.strip[0..15]
-		xtag.empty? ? nil : xtag
+		xtag = xtag.downcase.strip[0..15]
+		xtag.empty? ? nil : xtag.to_sym
 	end
 	
 	def self.tagValues(*tags)
