@@ -6,6 +6,7 @@ module Yojimbomb
 
 	MaxId = ('ff'*16).to_i(16)
 	MinId = 0
+	InvalidTagChars = /[^a-zA-Z0-9_=.$%&\#@ ]+/
 
 	def self.idValue(input = SecureRandom.uuid.gsub(/[-]/, ''))
 		cand = case input
@@ -20,6 +21,15 @@ module Yojimbomb
 		raise :invalidId if cand > Yojimbomb::MaxId
 		raise :invalidId if cand < Yojimbomb::MinId 
 		cand
+	end
+	
+	def tagValue(tag)
+		xtag = tag.gsub(Yojimbomb::InvalidTagChars, '').to_s.downcase.strip[0..15]
+		xtag.empty? ? nil : xtag
+	end
+	
+	def tagValues(*tags)
+		tags.map {|tag| Yojimbomb::tagValue(tag)}.compact.uniq
 	end
 
 
@@ -42,8 +52,8 @@ module Yojimbomb
 			xsundry = DefaultSundry
 			xsundry.merge!(sundry) unless sundry.nil?
 			@count = xsundry[:count]
-			@primaryTags = xsundry[:primary].uniq
-			@minorTags = xsundry[:minor].uniq
+			@primaryTags = Yojimbomb::tagValues( *xsundry[:primary] )
+			@minorTags = Yojimbomb::tagValues( *xsundry[:minor] )
 				
 			@id = Yojimbomb.idValue(xsundry[:id])
 		end
@@ -60,7 +70,7 @@ module Yojimbomb
 		alias :primary_tags :primaryTags
 		alias :tags :primaryTags
 		def withPrimaryTags(*tags)
-			@primaryTags += tags
+			@primaryTags += Yojimbomb::tagValues(*tags)
 			@primaryTags.uniq!
 			self
 		end
@@ -71,7 +81,7 @@ module Yojimbomb
 		end
 		alias :minor_tags :minorTags
 		def withMinorTags(*tags)
-			@minorTags += tags
+			@minorTags += Yojimbomb::tagValues(*tags)
 			@minorTags.uniq!
 			self
 		end
@@ -181,10 +191,10 @@ module Yojimbomb
 			@timezone = xsundry[:timezone] 
 				
 			@primaryTags = []
-			@primaryTags += xsundry[:primary] unless xsundry[:primary].nil?
+			@primaryTags += Yojimbomb::tagValues(*xsundry[:primary]) unless xsundry[:primary].nil?
 				
 			@minorTags = []
-			@minorTags += xsundry[:minor] unless xsundry[:minor].nil?
+			@minorTags += Yojimbomb::tagValues(*xsundry[:minor]) unless xsundry[:minor].nil?
 		end
 	
 		def filter(*metrics)

@@ -36,7 +36,7 @@ module RDBMS
 			@dataTypes = {
 				:uint => 'integer(10) unsigned',
 				:guid => 'varbinary(16)',
-				:symbol => 'char(10)',
+				:symbol => 'char(16)',
 				:searchLabel => 'char(32)',
 				:timestamp => 'timestamp',
 				:todValue => 'integer(4) unsigned'
@@ -57,7 +57,7 @@ module RDBMS
 		end
 		
 		def cleanDbSym(id) 
-			id.to_s.downcase.strip[0..9]
+			id.to_s.downcase.strip[0..15]
 		end
 		
 		def tableName(*nameParts)
